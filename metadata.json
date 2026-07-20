@@ -1,0 +1,6 @@
+{
+  "name": "Pet Clinic Management",
+  "description": "Comprehensive pet clinic system featuring appointment scheduling, automated doctor availability updates, CRUD managers for pets, doctors, and appointments, a secure patient portal, and an AI veterinary and scheduling co-pilot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

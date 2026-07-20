@@ -1,11 +1,141 @@
-<div align="center">
+# VetCore AI Clinic Hub 🐾
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+A highly polished, full-stack Veterinary Practice Management Hub featuring:
+- **Clinics Scheduling Manager** (Automated specialty doctor assignment, conflict validation, and double-booking checks)
+- **Patients & Pet Passport Manager** (Comprehensive breed, weight, medical case history tracking)
+- **Clinical Staff Roster** (Shift schedules, specialities, status management)
+- **Secure Patient Medical Records Portal** (Secure email login to view diagnoses and immunization history)
+- **AI Triage Co-Pilot** (Intelligent voice-responsive consultation, intake symptom triage, and scheduling helper)
+- **DevOps Autoscale Console** (Interactive telemetry simulation)
 
-  <h1>Built with AI Studio</h2>
+---
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 🚀 Part 1: How to Share and Deploy the App
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### 1. Quick Sharing via AI Studio
+The easiest way to let others experience this app directly in their browser is through AI Studio's built-in share workflow:
+- Click the **Share** button in the top right corner of the AI Studio workspace.
+- This creates an interactive preview link that anyone can open to view, test, and interact with the application.
 
-</div>
+### 2. Standard Cloud Deployment (Cloud Run / Vercel)
+If you want to host this application permanently on your own cloud:
+1. **GitHub Sync**: Push your code repository directly to GitHub using the **GitHub Export** menu under **Settings** in AI Studio.
+2. **Deploy to Cloud Run / Vercel / Render**:
+   - Create a service on your hosting platform and connect it to your GitHub repository.
+   - Configure the environment variable: `GEMINI_API_KEY` in the hosting console secrets.
+   - The container build script will automatically execute `npm run build` and run `npm start` (listening on port 3000).
+
+---
+
+## 💻 Part 2: Downloading and Running Locally
+
+To run this application on your local machine, you must first export the source code.
+
+### 1. Download the Code
+- In Google AI Studio, open the **Settings** menu (gear icon in the top/bottom left sidebar) or clicking the Export options.
+- Select **Export ZIP** to download a compressed folder containing all files, or connect your **GitHub account** to push the workspace directly to a new repository.
+- Extract the ZIP folder on your local computer and open your terminal inside the directory.
+
+### 2. Environment Configuration
+Before launching the server, copy `.env.example` to a new file named `.env` and fill in your custom **Gemini API Key**:
+
+```bash
+# Copy env example
+cp .env.example .env
+```
+
+Open the newly created `.env` file and replace the placeholder with your actual key from [Google AI Studio](https://aistudio.google.com/):
+```env
+GEMINI_API_KEY="AIzaSyYourActualKeyGoesHere"
+APP_URL="http://localhost:3000"
+```
+
+---
+
+## 🛠️ Method A: Run Locally (Node.js and npm)
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) (Version 18 or 20+ recommended)
+- [npm](https://www.npmjs.com/) (bundled with Node.js)
+
+### Step 1: Install Dependencies
+Run the package installation script to download libraries (such as React, Express, Lucide, Tailwind, and Gemini SDK):
+```bash
+npm install
+```
+
+### Step 2: Start the Development Server
+Launch the full-stack development environment:
+```bash
+npm run dev
+```
+The server will boot up instantly on **`http://localhost:3000`**. You can open this address in any browser. It live-reloads as you make changes to files!
+
+### Step 3: Run the Production Build (Optional)
+To test how the app runs in optimized production mode:
+```bash
+# Build & bundle React assets and transpile server.ts
+npm run build
+
+# Start the optimized server
+npm run start
+```
+
+---
+
+## 🐳 Method B: Run Locally with Docker
+
+If you prefer running apps in an isolated environment without installing Node.js directly on your host machine, you can package the app as a lightweight Alpine Docker image.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+### Step 1: Build the Docker Image
+In your project root folder (where the `Dockerfile` resides), run:
+```bash
+docker build -t vetcore-ai-clinic .
+```
+
+### Step 2: Run the Docker Container
+Launch the container, linking port 3000 and passing your `.env` configuration file:
+```bash
+docker run -p 3000:3000 --env-file .env vetcore-ai-clinic
+```
+Now, navigate to **`http://localhost:3000`** in your browser!
+
+---
+
+## 📦 Method C: Run Locally with Docker Compose
+
+Using Docker Compose is the most streamlined way to run the application with a single command. It automatically handles building the image, reading environment files, and mounting ports.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (which includes Docker Compose).
+
+### Step 1: Launch the Application
+In your project root, simply run:
+```bash
+docker-compose up --build
+```
+*Note: The `--build` flag ensures any recent code changes are rebuilt into the container.*
+
+### Step 2: Access the Application
+Open your browser and visit **`http://localhost:3000`**.
+
+### Step 3: Stop the Application
+To stop the services gracefully, press `Ctrl + C` in the terminal, or run:
+```bash
+docker-compose down
+```
+
+---
+
+## 🧪 Quick Test Data for Local Testing
+Once the app is running locally, you can use these records to log in and test clinical interactions:
+1. **Patient Portal Registered Emails**:
+   - `john.doe@gmail.com` (Owner of **Buddy** - Golden Retriever)
+   - `alice.smith@yahoo.com` (Owner of **Bella** - Persian Cat)
+2. **AI Co-Pilot Prompts**:
+   - *"Tell me Dr. Thorne's specialties"*
+   - *"Is Buddy's rabies vaccination due?"*
+   - *"Help me schedule a suture check for Bella next Tuesday"*
