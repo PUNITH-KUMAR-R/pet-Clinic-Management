@@ -5,13 +5,27 @@ import { Doctor } from '../types';
 interface DoctorsManagerProps {
   doctors: Doctor[];
   onRefresh: () => void;
+  autoOpenForm?: boolean;
+  onFormOpened?: () => void;
 }
 
-export default function DoctorsManager({ doctors, onRefresh }: DoctorsManagerProps) {
+export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFormOpened }: DoctorsManagerProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Auto-open add form if requested by parent component
+  useEffect(() => {
+    if (autoOpenForm) {
+      resetForm();
+      setEditingDoctor(null);
+      setShowAddForm(true);
+      if (onFormOpened) {
+        onFormOpened();
+      }
+    }
+  }, [autoOpenForm]);
 
   // Form states
   const [name, setName] = useState('');

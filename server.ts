@@ -413,6 +413,49 @@ app.delete('/api/appointments/:id', (req, res) => {
 // ------------------------------------
 // Gemini Co-Pilot AI Advisor Endpoint
 // ------------------------------------
+function simulateResponse(userText: string): string {
+  const query = userText.toLowerCase();
+  
+  if (query.includes('doctor') || query.includes('dr.') || query.includes('specialty') || query.includes('specialities')) {
+    let response = `🏥 **Clinic Doctor Schedules & Specialties**:\n\n`;
+    doctors.forEach(d => {
+      response += `* **${d.name}** - Specialty: *${d.specialty}*. Working days: **${d.workingDays.join(', ')}** (Hours: **${d.workingHours.start} - ${d.workingHours.end}**).\n`;
+    });
+    response += `\n*How can I help you schedule or adjust an appointment with any of our veterinarians?*`;
+    return response;
+  }
+  
+  if (query.includes('schedule') || query.includes('appointment') || query.includes('booking') || query.includes('conflict') || query.includes('available') || query.includes('time')) {
+    let response = `📅 **Active Scheduled Appointments & Availability**:\n\n`;
+    const activeApts = appointments.filter(a => a.status === 'Scheduled');
+    if (activeApts.length === 0) {
+      response += `There are no active appointments scheduled right now.\n`;
+    } else {
+      activeApts.forEach(a => {
+        const doc = doctors.find(d => d.id === a.doctorId);
+        response += `* Appointment with **${doc ? doc.name : 'Doctor'}** on **${a.date}** at **${a.time}** (Reason: *"${a.reason}"*).\n`;
+      });
+    }
+    response += `\n*Quick Suggestion*: If you have a scheduling conflict, Dr. Sarah Jenkins is available Monday through Friday from 09:00 to 17:00. Would you like to reschedule or request a specific time slot?`;
+    return response;
+  }
+  
+  if (query.includes('symptom') || query.includes('scratch') || query.includes('itch') || query.includes('vomit') || query.includes('diarrhea') || query.includes('cough') || query.includes('fever') || query.includes('eat') || query.includes('food') || query.includes('dog') || query.includes('cat') || query.includes('pet')) {
+    let response = `🐾 **AI Triage Preliminary Care Heuristics**:\n\n`;
+    if (query.includes('scratch') || query.includes('itch') || query.includes('skin')) {
+      response += `* **For Skin Irritation / Scratching**: Ensure there are no active flea infestations. A lukewarm oatmeal bath or cool damp compress can soothe irritated skin. Avoid scratching behaviors that break the skin.\n`;
+    } else if (query.includes('vomit') || query.includes('diarrhea') || query.includes('stomach') || query.includes('stomachache')) {
+      response += `* **For Gastrointestinal Distress**: Fast the pet for 12 hours from food (while keeping fresh water available). Reintroduce a bland diet such as boiled, skinless, unseasoned chicken breast and plain white rice in small quantities.\n`;
+    } else {
+      response += `* **For General Pet Well-being**: Keep your pet hydrated, warm, and in a quiet space. Do not administer any human over-the-counter painkillers (like acetaminophen or ibuprofen), which are highly toxic to cats and dogs.\n`;
+    }
+    response += `\n⚠️ **Professional Veterinary Disclaimer**: This advice is simulated and advisory. It is *not* a veterinary diagnosis. Please arrange a clinical exam for proper care.`;
+    return response;
+  }
+  
+  return `👋 **Hello! I am your Clinic AI Assistant.**\n\nI have live access to your doctors, registered pets, and appointments schedule. How can I help you today?\n\n* **Try asking me about**:\n* "What are Doctor Sarah's specialties?"\n* "How can I resolve booking conflicts?"\n* "What should I do if my dog is scratching?"`;
+}
+
 app.post('/api/gemini/co-pilot', async (req, res) => {
   const { messages } = req.body;
 
@@ -420,11 +463,15 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
     return res.status(400).json({ error: 'Messages array is required.' });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  const isPlaceholderKey = !geminiKey || geminiKey.toLowerCase().includes('your_gemini_api_key') || geminiKey.toLowerCase().includes('placeholder') || geminiKey === 'your_api_key_here';
+
+  if (isPlaceholderKey) {
+    const lastUserMessage = messages[messages.length - 1]?.content || '';
+    const dynamicReply = simulateResponse(lastUserMessage);
     return res.json({
       role: 'assistant',
-      content: `⚠️ **AI Co-pilot Sandbox Notice**:\n\nThe **GEMINI_API_KEY** is not configured. To enable this live AI Co-pilot assistant for booking conflict resolution and symptomatic care guidelines, please open the **Secrets panel** via **Settings > Secrets** in the top-right AI Studio interface and paste your API key with the name \`GEMINI_API_KEY\`.\n\n*Simulation Response*: Let's pretend I can see your scheduled data! Dr. Sarah Jenkins is fully booked at 10:00 on July 22, but Dr. Marcus Vance is available. For basic symptomatic skin irritation in dogs (Bella's case), a temporary oatmeal bath may soothe scratching until an appointment is confirmed.`
+      content: `⚠️ **AI Co-pilot Sandbox Notice**:\n\n*The **GEMINI_API_KEY** is not configured or is set to a placeholder value in your **.env** file. The assistant is currently running in interactive sandbox mode to simulate clinic intelligence offline!*\n\n${dynamicReply}`
     });
   }
 
@@ -441,7 +488,7 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
     // Provide context of current doctors, pets, and appointments
     const context = `
 You are the "AI Clinic Co-Pilot" for a premium veterinary practice, Pet Clinic Management.
-You help clinic administrators and patients resolve booking conflicts, suggest schedule adjustments, and offer preliminary, highly professional symptomatic treatment guidance.
+Your absolute primary objective is to DIRECTLY, IMMEDIATELY, and FULLY answer the user's specific query or question. Do NOT just passive-aggressively analyze or outline the conflict without giving a concrete solution. Always respond with friendly, direct answers.
 
 Current Clinic Data State:
 Doctors Available:
@@ -454,21 +501,54 @@ Current Appointments scheduled:
 ${JSON.stringify(appointments.filter(a => a.status === 'Scheduled').map(a => ({ id: a.id, doctor: doctors.find(d => d.id === a.doctorId)?.name, date: a.date, time: a.time, reason: a.reason })))}
 
 Rules:
-1. For scheduling issues: If there's a conflict or booking query, analyze working days/hours and booked slots. Suggest realistic alternative slots (e.g. "Dr. Robert is free on Monday mornings, let's look at 11:00 AM on Monday, July 27").
-2. For symptomatic advice: Offer clear, comforting, and safe preliminary care suggestions (e.g., proper hydration, gentle cooling, wound cleaning, temporary diets) but **ALWAYS** include a professional, prominent veterinary disclaimer emphasizing that the AI is not a doctor and the animal should be examined.
-3. Be friendly, structured (use bold text, lists, clear formatting), and professional. Keep answers focused and concise.
+1. ANSWER DIRECTLY: When a user asks a question, immediately provide the direct answer or action. Do not say "I am analyzing" or output meta-analysis. If they ask about a doctor's availability, state exactly when they are free or booked.
+2. SCHEDULING SOLUTIONS: If there is a scheduling conflict, check the doctor's working days/hours and current bookings. Suggest realistic, concrete alternative time slots (e.g., "Dr. Robert is free on Monday at 11:00 AM").
+3. SYMPTOMATIC CARE: If asked about symptoms, immediately offer comforting, actionable care steps (like proper hydration, safe food, cooling etc.) followed by a reminder to consult our clinic for a formal veterinary visit.
+4. TONE: Keep responses friendly, structured (using bold text and clear spacing), extremely concise, and focused entirely on helping the user right away.
 `;
 
     // Map conversation messages to Gemini contents format
-    const contents = messages.map((m: any) => ({
+    const mapped = messages.map((m: any) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
+      parts: [{ text: m.content || '' }]
     }));
+
+    // Squeeze consecutive messages with the same role to prevent Gemini sequence validation errors
+    const squeezed: typeof mapped = [];
+    for (const msg of mapped) {
+      if (squeezed.length === 0) {
+        squeezed.push(msg);
+      } else {
+        const last = squeezed[squeezed.length - 1];
+        if (last.role === msg.role) {
+          last.parts[0].text += '\n' + msg.parts[0].text;
+        } else {
+          squeezed.push(msg);
+        }
+      }
+    }
+
+    // Ensure contents starts with a 'user' turn and ends with a 'user' turn
+    let finalContents = squeezed;
+    const firstUserIndex = finalContents.findIndex(c => c.role === 'user');
+    if (firstUserIndex !== -1) {
+      finalContents = finalContents.slice(firstUserIndex);
+    } else {
+      finalContents = [{ role: 'user', parts: [{ text: 'Hello' }] }];
+    }
+
+    if (finalContents.length > 0 && finalContents[finalContents.length - 1].role === 'model') {
+      finalContents.pop();
+    }
+
+    if (finalContents.length === 0) {
+      finalContents = [{ role: 'user', parts: [{ text: 'Hello' }] }];
+    }
 
     // Generate content
     const response = await ai.models.generateContent({
       model: 'gemini-3.5-flash',
-      contents: contents,
+      contents: finalContents,
       config: {
         systemInstruction: context
       }
@@ -481,7 +561,31 @@ Rules:
 
   } catch (error: any) {
     console.error('Gemini API Error:', error);
-    res.status(500).json({ error: 'Failed to communicate with AI Co-pilot: ' + error.message });
+
+    const errorMsg = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
+    const lastUserMessage = messages[messages.length - 1]?.content || '';
+    const dynamicReply = simulateResponse(lastUserMessage);
+
+    const isApiKeyError = 
+      errorMsg.includes('API_KEY_INVALID') || 
+      errorMsg.includes('API key not valid') ||
+      errorMsg.includes('INVALID_ARGUMENT') ||
+      errorMsg.includes('400') ||
+      errorMsg.includes('401') ||
+      errorMsg.includes('403') ||
+      errorMsg.toLowerCase().includes('api key');
+
+    if (isApiKeyError) {
+      return res.json({
+        role: 'assistant',
+        content: `⚠️ **Invalid or Missing Gemini API Key**\n\nThe Gemini API returned an authentication error:\n> *API key not valid. Please pass a valid API key.*\n\n👉 **How to fix this**:\n1. Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)\n2. Open your **.env** file in your project folder (\`D:\\Pet-Clinic-Management-main\\.env\`)\n3. Set your key:\n   \`\`\`env\n   GEMINI_API_KEY=AIzaSyYourActualKeyHere\n   \`\`\`\n4. Save the file and restart your Docker container / dev server (\`docker-compose up --build\`)\n\n---\n*💡 **Interactive Sandbox Response (Offline Simulation)**:\*\n\n${dynamicReply}`
+      });
+    }
+
+    return res.json({
+      role: 'assistant',
+      content: `⚠️ **AI Co-pilot Notice**: Unable to contact Gemini API (${errorMsg.substring(0, 100)}).\n\n---\n*💡 **Interactive Sandbox Response (Offline Simulation)**:\*\n\n${dynamicReply}`
+    });
   }
 });
 

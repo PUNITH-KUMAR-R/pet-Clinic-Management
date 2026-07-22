@@ -1,22 +1,55 @@
-import { useState } from 'react';
-import { Sparkles, Send, Bot, AlertTriangle, User, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Sparkles, Send, Bot, AlertTriangle, User, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { CoPilotMessage } from '../types';
 
 interface AICopilotProps {
   onRefreshData?: () => void;
 }
 
+const DEFAULT_INITIAL_MESSAGE: CoPilotMessage = {
+  id: 'init',
+  role: 'assistant',
+  content: 'Hi! I am your AI Clinic Co-pilot. I have live access to your doctors, registered pets, and appointments schedule. Ask me to:\n\n* **Resolve booking conflicts**: e.g., "Doctor Sarah is busy at 10 AM, help find another time or general doctor."\n* **Symptomatic Guidelines**: e.g., "Bella is scratching her paws frequently, what should I do?"',
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+};
+
 export default function AICopilot({ onRefreshData }: AICopilotProps) {
-  const [messages, setMessages] = useState<CoPilotMessage[]>([
-    {
-      id: 'init',
-      role: 'assistant',
-      content: 'Hi! I am your AI Clinic Co-pilot. I have live access to your doctors, registered pets, and appointments schedule. Ask me to:\n\n* **Resolve booking conflicts**: e.g., "Doctor Sarah is busy at 10 AM, help find another time or general doctor."\n* **Symptomatic Guidelines**: e.g., "Bella is scratching her paws frequently, what should I do?"',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const [messages, setMessages] = useState<CoPilotMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('vetcore_copilot_messages');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load chat history from localStorage', e);
     }
-  ]);
+    return [DEFAULT_INITIAL_MESSAGE];
+  });
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vetcore_copilot_messages', JSON.stringify(messages));
+    } catch (e) {
+      console.error('Failed to save chat history to localStorage', e);
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
+
+  const handleClearChat = () => {
+    const reset = [DEFAULT_INITIAL_MESSAGE];
+    setMessages(reset);
+    localStorage.removeItem('vetcore_copilot_messages');
+  };
 
   const quickPrompts = [
     'Help resolve Monday 10:00 booking issue',
@@ -83,8 +116,15 @@ export default function AICopilot({ onRefreshData }: AICopilotProps) {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={handleClearChat}
+            title="Reset Chat History"
+            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-teal-100 transition-colors text-xs flex items-center gap-1 cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-[11px]">Clear</span>
+          </button>
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="text-xs text-teal-50">Active Context</span>
         </div>
       </div>
 
@@ -110,17 +150,30 @@ export default function AICopilot({ onRefreshData }: AICopilotProps) {
               }`}>
                 {/* Parse simple markdown lines */}
                 {msg.content.split('\n').map((line, idx) => {
-                  if (line.startsWith('* **') || line.startsWith('**') || line.startsWith('*')) {
-                    // Render custom bold or bullet styling nicely
-                    const cleaned = line.replace(/^\*\s+/, '').replace(/\*\*/g, '');
+                  const trimmed = line.trim();
+                  if (!trimmed) return <div key={idx} className="h-2" />;
+
+                  if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+                    const cleaned = trimmed.replace(/^[\*\-]\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1');
                     return (
                       <div key={idx} className="flex items-start space-x-1.5 my-1">
-                        <span className="text-teal-500 mt-1">•</span>
+                        <span className="text-teal-500 font-bold">•</span>
                         <span>{cleaned}</span>
                       </div>
                     );
                   }
-                  return <p key={idx} className="mb-1 last:mb-0">{line}</p>;
+
+                  if (trimmed.startsWith('> ')) {
+                    return (
+                      <div key={idx} className="border-l-2 border-amber-400 pl-2.5 my-1 text-slate-600 italic bg-amber-50/50 py-1 rounded-r-md">
+                        {trimmed.replace(/^>\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1')}
+                      </div>
+                    );
+                  }
+
+                  // Strip bold syntax or render as plain formatted line
+                  const renderText = trimmed.replace(/\*\*(.*?)\*\*/g, '$1');
+                  return <p key={idx} className="mb-1 last:mb-0">{renderText}</p>;
                 })}
               </div>
               <span className="text-[10px] text-slate-400 px-1 block text-right">{msg.timestamp}</span>
@@ -134,6 +187,7 @@ export default function AICopilot({ onRefreshData }: AICopilotProps) {
             <span>Co-pilot is analyzing schedules & guidelines...</span>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Prompt suggestions */}
@@ -174,12 +228,6 @@ export default function AICopilot({ onRefreshData }: AICopilotProps) {
           <Send className="w-4 h-4" />
         </button>
       </form>
-
-      {/* Safety Disclaimer */}
-      <div className="bg-amber-50 px-3 py-1.5 border-t border-amber-100 flex items-center space-x-1.5 text-[10px] text-amber-700">
-        <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />
-        <span>Co-pilot symptom guidelines are advisory; always consult a licensed vet for diagnosis.</span>
-      </div>
     </div>
   );
 }

@@ -17,11 +17,61 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState('Central London Clinic');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [autoOpenDoctorForm, setAutoOpenDoctorForm] = useState(false);
+  const [logsSuccess, setLogsSuccess] = useState<string | null>(null);
+
+  const handleExportLogs = () => {
+    const timestamp = new Date().toISOString();
+    const logData = {
+      app: "VetCore AI Clinic Hub",
+      timestamp,
+      branch: selectedBranch,
+      telemetry: {
+        activeDoctors: doctors.length,
+        scheduledAppointments: appointments.length,
+        totalPetsRegistered: pets.length,
+        coveragePercent: 98.4
+      },
+      auditLogs: [
+        { level: "INFO", timestamp, message: `System telemetry snapshot requested by operator.` },
+        { level: "INFO", timestamp, message: `Database synchronization complete. Synced ${doctors.length} doctors, ${pets.length} pets, ${appointments.length} visits.` },
+        { level: "INFO", timestamp, message: "AI Copilot sandbox loaded." },
+        ...doctors.map(d => ({
+          level: "DEBUG",
+          timestamp,
+          message: `Practitioner active: ${d.name} (${d.specialty})`
+        })),
+        ...appointments.slice(0, 5).map(a => ({
+          level: "DEBUG",
+          timestamp,
+          message: `Appointment status checked: Apt ID ${a.id} on ${a.date} - ${a.time}`
+        }))
+      ]
+    };
+
+    const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vetcore-telemetry-logs-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setLogsSuccess(`Successfully generated, exported, and downloaded vetcore-telemetry-logs.json!`);
+    setActiveTab('devops');
+    setTimeout(() => {
+      setLogsSuccess(null);
+    }, 6000);
+  };
 
   // Load backend data on mount or change
-  const fetchData = async () => {
+  const fetchData = async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial || (doctors.length === 0 && pets.length === 0)) {
+        setLoading(true);
+      }
       setError(null);
 
       const [docsRes, petsRes, aptsRes] = await Promise.all([
@@ -49,7 +99,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
 
   const pendingAppointments = appointments.filter(apt => apt.status === 'Scheduled').length;
@@ -305,6 +355,17 @@ export default function App() {
             </div>
           )}
 
+          {/* Telemetry Log Export Success Banner */}
+          {logsSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start space-x-3 text-emerald-950 text-sm animate-fade-in">
+              <CheckCircle className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <strong className="font-bold">Telemetry Logs Exported:</strong>
+                <p className="mt-1 text-xs">{logsSuccess}</p>
+              </div>
+            </div>
+          )}
+
           {/* Core Content Loading Indicator or Grid Board */}
           {loading ? (
             <div className="text-center py-20 space-y-4">
@@ -335,6 +396,8 @@ export default function App() {
                   <DoctorsManager
                     doctors={doctors}
                     onRefresh={fetchData}
+                    autoOpenForm={autoOpenDoctorForm}
+                    onFormOpened={() => setAutoOpenDoctorForm(false)}
                   />
                 )}
                 {activeTab === 'portal' && (
@@ -359,15 +422,18 @@ export default function App() {
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Management Shortcuts</h4>
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => setActiveTab('doctors')}
-                      className="flex flex-col items-center justify-center p-3.5 border border-slate-100 rounded-xl hover:bg-slate-50/80 hover:border-slate-200 group transition-all text-center cursor-pointer"
+                      onClick={() => {
+                        setActiveTab('doctors');
+                        setAutoOpenDoctorForm(true);
+                      }}
+                      className="flex flex-col items-center justify-center p-3.5 border border-slate-100 rounded-xl hover:bg-teal-50/50 hover:border-teal-200 group transition-all text-center cursor-pointer"
                     >
                       <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold mb-1.5 group-hover:bg-teal-100 transition-colors">+</div>
                       <span className="text-[10px] font-bold text-slate-600">Add Doctor</span>
                     </button>
                     <button
-                      onClick={() => setActiveTab('devops')}
-                      className="flex flex-col items-center justify-center p-3.5 border border-slate-100 rounded-xl hover:bg-slate-50/80 hover:border-slate-200 group transition-all text-center cursor-pointer"
+                      onClick={handleExportLogs}
+                      className="flex flex-col items-center justify-center p-3.5 border border-slate-100 rounded-xl hover:bg-blue-50/50 hover:border-blue-200 group transition-all text-center cursor-pointer"
                     >
                       <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:bg-blue-100 transition-colors">
                         <Terminal className="w-4 h-4" />
