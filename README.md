@@ -130,6 +130,113 @@ docker-compose down
 
 ---
 
+## 🔒 Part 3: Security, QA & Testing in VS Code
+
+This section explains how to run **Unit Tests**, **Secrets Leak Detection**, **Vulnerability Scans**, and **SAST (Static Code Security Testing)** directly in **VS Code** for this application.
+
+---
+
+### 1. 🧪 Unit Tests (Running & Debugging in VS Code)
+
+#### **CLI Approach (Vitest / Jest)**
+1. **Install Vitest** (recommended for Vite projects):
+   ```bash
+   npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom
+   ```
+2. **Add a test script** to `package.json`:
+   ```json
+   "scripts": {
+     "test": "vitest run",
+     "test:watch": "vitest"
+   }
+   ```
+3. **Execute tests in terminal**:
+   ```bash
+   npm run test
+   ```
+
+#### **VS Code Integration**
+- **Extension**: Install **[Vitest Runner](https://marketplace.visualstudio.com/items?itemName=vitest.explorer)** or **[Jest](https://marketplace.visualstudio.com/items?itemName=Orta.vscode-jest)** from the VS Code Extensions panel (`Ctrl+Shift+X` or `Cmd+Shift+X`).
+- **Test Explorer**: Click the **Testing (Beaker Icon)** in the VS Code sidebar to run, re-trigger, or debug individual test suites visually with interactive inline pass/fail indicators.
+
+---
+
+### 2. 🔑 Secrets Leak Detection (Preventing API Key / Token Exposure)
+
+#### **A. VS Code Extensions (Real-Time Protection)**
+- **[Gitleaks Extension](https://marketplace.visualstudio.com/items?itemName=zricethezav.gitleaks)** or **[Secret Scanner](https://marketplace.visualstudio.com/items?itemName=moli.secret-scanner)**:
+  - Scans files in real time while typing in VS Code.
+  - Highlights hardcoded API keys, JWTs, or private keys before you commit code.
+
+#### **B. CLI Scans (Gitleaks / TruffleHog)**
+Run an automated repository scan before pushing code:
+```bash
+# Using Gitleaks (Requires Docker or Gitleaks CLI installed)
+gitleaks detect --source . --verbose
+
+# Using TruffleHog
+trufflehog git file://. --since-commit HEAD
+```
+
+#### **C. Pre-commit Hooks (Git Hook Automation)**
+Add pre-commit protection using `husky`:
+```bash
+npm install -D husky
+npx husky init
+echo "npx gitleaks detect --source . --no-git" > .husky/pre-commit
+```
+
+---
+
+### 3. 🛡️ Vulnerability Scanning (Dependency & Image Audits)
+
+#### **A. Package Audit (npm audit)**
+Check third-party dependencies for known CVE vulnerabilities:
+```bash
+# Scan dependencies
+npm audit
+
+# Automatically fix minor safe patches
+npm audit fix
+```
+
+#### **B. Snyk Security (VS Code Integration)**
+1. Install the **[Snyk Security](https://marketplace.visualstudio.com/items?itemName=snyk-security.snyk-vulnerability-scanner)** extension in VS Code.
+2. Sign in to Snyk. It automatically scans `package.json` for known vulnerabilities and displays actionable remediation guidance in VS Code's sidebar.
+
+#### **C. Container & Docker Vulnerability Scanning**
+If using Docker, scan your container image with **Trivy** or **Docker Scout**:
+```bash
+# Docker Scout scan
+docker scout cve vetcore-ai-clinic
+
+# Trivy scan
+trivy image vetcore-ai-clinic
+```
+
+---
+
+### 4. 🔍 SAST Scan (Static Application Security Testing)
+
+#### **A. ESLint & TypeScript Type Checking**
+Catch code smells, invalid types, and unsafe patterns:
+```bash
+# Type check using TypeScript compiler
+npm run lint
+```
+In VS Code, install the **[ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)** extension to see inline red/yellow squiggles for code quality issues.
+
+#### **B. SonarLint (In-IDE SAST Scanning)**
+1. Install **[SonarLint](https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode)** extension in VS Code.
+2. SonarLint scans code in real-time as you write TypeScript/JavaScript, flagging potential security flaws (e.g. unhandled promises, XSS vulnerabilities, hardcoded secrets, injection vectors).
+
+#### **C. GitHub CodeQL (CI/CD Automated SAST)**
+For GitHub repositories:
+- Enable **Code Security & Analysis -> CodeQL Analysis** in GitHub repository settings.
+- GitHub automatically scans every Pull Request and commit for SAST security vulnerabilities.
+
+---
+
 ## 🧪 Quick Test Data for Local Testing
 Once the app is running locally, you can use these records to log in and test clinical interactions:
 1. **Patient Portal Registered Emails**:
