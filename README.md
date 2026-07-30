@@ -169,13 +169,28 @@ This section explains how to run **Unit Tests**, **Secrets Leak Detection**, **V
   - Highlights hardcoded API keys, JWTs, or private keys before you commit code.
 
 #### **B. CLI Scans (Gitleaks / TruffleHog)**
-Run an automated repository scan before pushing code:
-```bash
-# Using Gitleaks (Requires Docker or Gitleaks CLI installed)
-gitleaks detect --source . --verbose
+To run `gitleaks` in your terminal on Windows, `gitleaks` must first be installed. Choose one of the following methods:
 
-# Using TruffleHog
-trufflehog git file://. --since-commit HEAD
+**Option 1: Windows Package Manager (winget / scoop / choco)**
+```powershell
+# Using Winget (Built-in on Windows 10/11)
+winget install gitleaks
+
+# Or using Scoop
+scoop install gitleaks
+
+# Or using Chocolatey
+choco install gitleaks
+```
+
+**Option 2: Using Docker (No local binary install needed)**
+```powershell
+docker run -v ${PWD}:/path zricethezav/gitleaks:latest detect --source="/path" -v
+```
+
+**Option 3: Run Gitleaks directly after installing**
+```powershell
+gitleaks detect --source . --verbose
 ```
 
 #### **C. Pre-commit Hooks (Git Hook Automation)**
