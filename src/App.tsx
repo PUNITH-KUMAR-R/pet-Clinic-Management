@@ -1,24 +1,43 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Heart, ShieldAlert, Sparkles, Terminal, LogOut, ChevronRight, Menu, HelpCircle, Activity, ClipboardList, Layers, Search, Bell, User, Settings, CheckCircle, MapPin, Sliders, X } from 'lucide-react';
+import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon } from 'lucide-react';
 import DoctorsManager from './components/DoctorsManager';
 import PetsManager from './components/PetsManager';
 import AppointmentsManager from './components/AppointmentsManager';
 import PatientPortal from './components/PatientPortal';
 import DevOpsHub from './components/DevOpsHub';
+import NotificationsPage from './components/NotificationsPage';
 import AICopilot from './components/AICopilot';
 import { Doctor, Pet, Appointment } from './types';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'appointments' | 'pets' | 'doctors' | 'portal' | 'devops'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'pets' | 'doctors' | 'portal' | 'devops' | 'notifications'>('appointments');
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState('Central London Clinic');
+  const selectedBranch = 'Central London Clinic';
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [autoOpenDoctorForm, setAutoOpenDoctorForm] = useState(false);
   const [logsSuccess, setLogsSuccess] = useState<string | null>(null);
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return (localStorage.getItem('vetcore_theme') as 'light' | 'dark') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('vetcore_theme', theme);
+  }, [theme]);
 
   const handleExportLogs = () => {
     const timestamp = new Date().toISOString();
@@ -107,18 +126,28 @@ export default function App() {
   const activeDoctors = doctors.length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex overflow-hidden">
+    <div className={`min-h-screen font-sans flex overflow-hidden transition-colors ${theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       
       {/* Sidebar Navigation - Desktop */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col shrink-0">
-        <div className="p-6 flex items-center gap-3 border-b border-slate-100">
-          <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-teal-600/10">
-            <Activity className="w-5 h-5" />
+      <aside className="hidden lg:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col shrink-0">
+        <div className="p-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-teal-600/10">
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg tracking-tight text-slate-800 dark:text-slate-100 font-display">VetCore AI</h1>
+              <span className="text-[10px] uppercase font-bold tracking-widest text-teal-600 dark:text-teal-400 block -mt-1">Clinic Hub Console</span>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-lg tracking-tight text-slate-800 font-display">VetCore AI</h1>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-teal-600 block -mt-1">Clinic Hub Console</span>
-          </div>
+
+          <button
+            onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+            title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            {theme === 'light' ? <Moon className="w-4.5 h-4.5 text-slate-600" /> : <Sun className="w-4.5 h-4.5 text-amber-400" />}
+          </button>
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
@@ -126,8 +155,8 @@ export default function App() {
             onClick={() => setActiveTab('appointments')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
               activeTab === 'appointments'
-                ? 'bg-teal-50 text-teal-700 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Calendar className="w-4.5 h-4.5 shrink-0" />
@@ -138,8 +167,8 @@ export default function App() {
             onClick={() => setActiveTab('pets')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
               activeTab === 'pets'
-                ? 'bg-teal-50 text-teal-700 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Heart className="w-4.5 h-4.5 shrink-0" />
@@ -150,8 +179,8 @@ export default function App() {
             onClick={() => setActiveTab('doctors')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
               activeTab === 'doctors'
-                ? 'bg-teal-50 text-teal-700 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <ClipboardList className="w-4.5 h-4.5 shrink-0" />
@@ -162,20 +191,32 @@ export default function App() {
             onClick={() => setActiveTab('portal')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
               activeTab === 'portal'
-                ? 'bg-teal-50 text-teal-700 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Layers className="w-4.5 h-4.5 shrink-0" />
             <span>Patient Portal</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('notifications')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
+              activeTab === 'notifications'
+                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <Bell className="w-4.5 h-4.5 shrink-0" />
+            <span>Notifications</span>
           </button>
           
           <button
             onClick={() => setActiveTab('devops')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
               activeTab === 'devops'
-                ? 'bg-teal-50 text-teal-700 shadow-xs'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             <Terminal className="w-4.5 h-4.5 shrink-0" />
@@ -184,8 +225,8 @@ export default function App() {
         </nav>
 
         {/* System Status Card */}
-        <div className="p-4 border-t border-slate-100">
-          <div className="bg-slate-900 rounded-2xl p-4 text-white">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-4 text-white border border-slate-800">
             <div className="flex justify-between items-center mb-2">
               <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">System Status</span>
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -199,18 +240,30 @@ export default function App() {
       {/* Mobile Sidebar Overlay Drawer */}
       {isMobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden bg-slate-900/60 backdrop-blur-xs">
-          <div className="relative flex flex-col w-64 max-w-xs bg-white h-full p-5 shadow-xl">
-            <button
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className="absolute right-4 top-4 p-2 text-slate-500 hover:text-slate-800"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2.5 mb-8 pt-2">
-              <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white shadow-md">
-                <Activity className="w-4.5 h-4.5" />
+          <div className="relative flex flex-col w-64 max-w-xs bg-white dark:bg-slate-900 h-full p-5 shadow-xl border-r border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-8 pt-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                  <Activity className="w-4.5 h-4.5" />
+                </div>
+                <h1 className="font-bold text-lg text-slate-800 dark:text-slate-100 font-display">VetCore AI</h1>
               </div>
-              <h1 className="font-bold text-lg text-slate-800 font-display">VetCore AI</h1>
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+                  title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} mode`}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  {theme === 'light' ? <Moon className="w-4.5 h-4.5 text-slate-600" /> : <Sun className="w-4.5 h-4.5 text-amber-400" />}
+                </button>
+                <button
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             <nav className="space-y-1.5 flex-1">
               {[
@@ -218,6 +271,7 @@ export default function App() {
                 { id: 'pets', label: 'Pets & Patients', icon: Heart },
                 { id: 'doctors', label: 'Veterinary Staff', icon: ClipboardList },
                 { id: 'portal', label: 'Patient Portal', icon: Layers },
+                { id: 'notifications', label: 'Notifications', icon: Bell },
                 { id: 'devops', label: 'DevOps & Scale Hub', icon: Terminal },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -230,8 +284,8 @@ export default function App() {
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all ${
                       activeTab === tab.id
-                        ? 'bg-teal-50 text-teal-700'
-                        : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Icon className="w-4.5 h-4.5" />
@@ -240,7 +294,7 @@ export default function App() {
                 );
               })}
             </nav>
-            <div className="bg-slate-900 rounded-xl p-3.5 text-white mt-auto">
+            <div className="bg-slate-900 dark:bg-slate-950 rounded-xl p-3.5 text-white mt-auto border border-slate-800">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] text-slate-400 font-bold uppercase">Dev Status</span>
                 <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -255,52 +309,31 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between shrink-0">
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-1.5 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg cursor-pointer"
+              className="lg:hidden p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer"
             >
               <Menu className="w-5 h-5" />
             </button>
-            
-            <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-3 py-1.5 border border-slate-200/40">
-              <MapPin className="w-3.5 h-3.5 text-teal-600" />
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-transparent border-none text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="Central London Clinic">Central London Clinic</option>
-                <option value="North Branch (Hampstead)">North Branch (Hampstead)</option>
-                <option value="East Side Veterinary">East Side Veterinary</option>
-              </select>
-            </div>
-            
-            <span className="hidden sm:inline text-slate-300">|</span>
-            
-            <div className="hidden sm:flex items-center relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search patient, specialty..."
-                className="pl-8 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs w-56 focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
-              />
-            </div>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex items-center space-x-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wide">Live Database Connected</span>
-            </div>
-            
-            <button className="p-2 text-slate-400 hover:text-slate-600 border border-slate-100 rounded-full hover:bg-slate-50 relative">
+            <button
+              onClick={() => setActiveTab('notifications')}
+              title="Open Notifications"
+              className={`p-2 rounded-full border relative transition-colors cursor-pointer ${
+                activeTab === 'notifications'
+                  ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
               <Bell className="w-4 h-4" />
               <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
             </button>
             
-            <div className="w-8 h-8 rounded-full bg-teal-100 border border-teal-200 flex items-center justify-center text-teal-700 font-bold text-xs">
+            <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/60 border border-teal-200 dark:border-teal-700 flex items-center justify-center text-teal-700 dark:text-teal-300 font-bold text-xs">
               JD
             </div>
           </div>
@@ -406,6 +439,14 @@ export default function App() {
                     appointments={appointments}
                     doctors={doctors}
                     onRefresh={fetchData}
+                  />
+                )}
+                {activeTab === 'notifications' && (
+                  <NotificationsPage
+                    appointments={appointments}
+                    pets={pets}
+                    doctors={doctors}
+                    onNavigateTab={(tab) => setActiveTab(tab)}
                   />
                 )}
                 {activeTab === 'devops' && (
