@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon } from 'lucide-react';
+import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download } from 'lucide-react';
 import DoctorsManager from './components/DoctorsManager';
 import PetsManager from './components/PetsManager';
 import AppointmentsManager from './components/AppointmentsManager';
@@ -319,7 +319,15 @@ export default function App() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={handleExportLogs}
+              title="Export & Download Telemetry Logs"
+              className="p-2 rounded-full border border-slate-100 dark:border-slate-800 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50/50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
             <button
               onClick={() => setActiveTab('notifications')}
               title="Open Notifications"
@@ -457,32 +465,6 @@ export default function App() {
               {/* AI Assistant Right Wing Column */}
               <div className="xl:col-span-4 space-y-6">
                 <AICopilot onRefreshData={fetchData} />
-                
-                {/* Sleek Short-cut Card */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Management Shortcuts</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        setActiveTab('doctors');
-                        setAutoOpenDoctorForm(true);
-                      }}
-                      className="flex flex-col items-center justify-center p-3.5 border border-slate-100 rounded-xl hover:bg-teal-50/50 hover:border-teal-200 group transition-all text-center cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold mb-1.5 group-hover:bg-teal-100 transition-colors">+</div>
-                      <span className="text-[10px] font-bold text-slate-600">Add Doctor</span>
-                    </button>
-                    <button
-                      onClick={handleExportLogs}
-                      className="flex flex-col items-center justify-center p-3.5 border border-slate-100 rounded-xl hover:bg-blue-50/50 hover:border-blue-200 group transition-all text-center cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-1.5 group-hover:bg-blue-100 transition-colors">
-                        <Terminal className="w-4 h-4" />
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-600">Export Logs</span>
-                    </button>
-                  </div>
-                </div>
               </div>
               
             </div>
