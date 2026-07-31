@@ -413,8 +413,96 @@ app.delete('/api/appointments/:id', (req, res) => {
 // ------------------------------------
 // Gemini Co-Pilot AI Advisor Endpoint
 // ------------------------------------
+function handleRegisterPet(args: any): Pet {
+  const newPet: Pet = {
+    id: `pet-${Date.now()}`,
+    name: args.name || args.petName || 'New Patient',
+    type: args.type || args.petType || 'Dog',
+    breed: args.breed || 'Mixed Breed',
+    age: Number(args.age) || 2,
+    weight: Number(args.weight) || 10,
+    ownerName: args.ownerName || 'Registered Owner',
+    ownerEmail: args.ownerEmail || 'patient@example.com',
+    ownerPhone: args.ownerPhone || '555-0199',
+    medicalRecords: [
+      {
+        id: `rec-${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        diagnosis: 'Initial Patient Registration',
+        treatment: 'Standard intake medical profile created and verified.',
+        notes: 'Registered via Gemini Practice Co-Pilot assistant.',
+        vetName: 'Dr. Sarah Jenkins'
+      }
+    ]
+  };
+  pets.push(newPet);
+  return newPet;
+}
+
+function handleScheduleAppointment(args: any): { success: boolean; appointment?: Appointment; error?: string } {
+  // Find pet by name or ID
+  const pet = pets.find(p => p.id === args.petId || p.name.toLowerCase() === (args.petName || '').toLowerCase()) || pets[0];
+  const doctor = doctors.find(d => d.id === args.doctorId || d.name.toLowerCase().includes((args.doctorName || '').toLowerCase())) || doctors[0];
+
+  const date = args.date || new Date().toISOString().split('T')[0];
+  const time = args.time || '11:00';
+  const reason = args.reason || 'General checkup consultation';
+
+  if (!pet) return { success: false, error: 'Pet record not found.' };
+  if (!doctor) return { success: false, error: 'Doctor not found.' };
+
+  const newApt: Appointment = {
+    id: `apt-${Date.now()}`,
+    petId: pet.id,
+    doctorId: doctor.id,
+    date,
+    time,
+    reason,
+    status: 'Scheduled',
+    notes: args.notes || 'Booked via Gemini Practice Co-Pilot'
+  };
+
+  appointments.push(newApt);
+  return { success: true, appointment: newApt };
+}
+
 function simulateResponse(userText: string): string {
   const query = userText.toLowerCase();
+
+  // 1. Check if user wants to register a pet / patient
+  if (
+    query.includes('register') || 
+    query.includes('add pet') || 
+    query.includes('add patient') || 
+    query.includes('new pet') || 
+    query.includes('new patient') || 
+    (query.includes('pet') && query.includes('owner'))
+  ) {
+    // Smart extraction for simulated registration
+    const nameMatch = userText.match(/(?:named|name|pet|is)\s+([A-Z][a-z]+)/i);
+    const breedMatch = userText.match(/(?:breed|is a)\s+([A-Z][a-z\s]+?)(?:,|\.|\s+age|\s+owned|\s+weight|$)/i);
+    const ownerMatch = userText.match(/(?:owner|owned by|client)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)/i);
+    const emailMatch = userText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+
+    const name = nameMatch ? nameMatch[1] : 'Buddy';
+    const breed = breedMatch ? breedMatch[1].trim() : (query.includes('cat') ? 'Persian Cat' : 'Labrador Retriever');
+    const type = query.includes('cat') ? 'Cat' : query.includes('bird') ? 'Bird' : 'Dog';
+    const ownerName = ownerMatch ? ownerMatch[1] : 'Sarah Jenkins';
+    const ownerEmail = emailMatch ? emailMatch[1] : `${ownerName.toLowerCase().replace(/\s+/g, '.')}@gmail.com`;
+
+    const registered = handleRegisterPet({
+      name,
+      type,
+      breed,
+      age: 2,
+      weight: type === 'Cat' ? 4.5 : 22,
+      ownerName,
+      ownerEmail,
+      ownerPhone: '555-0188'
+    });
+
+    return `🎉 **Patient Registered Successfully!**\n\nI have created a new patient record in the clinic database:\n* **Pet Name**: **${registered.name}** (${registered.breed})\n* **Species**: ${registered.type}\n* **Owner Name**: **${registered.ownerName}**\n* **Registered Email**: \`${registered.ownerEmail}\`\n\n✅ **Live Sync Complete**: The Pets list and Patient Portal have been updated automatically. You can view **${registered.name}**'s record in the **Pets** tab or log into the **Patient Portal** using \`${registered.ownerEmail}\`!`;
+  }
   
   if (query.includes('doctor') || query.includes('dr.') || query.includes('specialty') || query.includes('specialities')) {
     let response = `🏥 **Clinic Doctor Schedules & Specialties**:\n\n`;
@@ -453,7 +541,7 @@ function simulateResponse(userText: string): string {
     return response;
   }
   
-  return `👋 **Hello! I am your Clinic AI Assistant.**\n\nI have live access to your doctors, registered pets, and appointments schedule. How can I help you today?\n\n* **Try asking me about**:\n* "What are Doctor Sarah's specialties?"\n* "How can I resolve booking conflicts?"\n* "What should I do if my dog is scratching?"`;
+  return `👋 **Hello! I am your Clinic AI Assistant.**\n\nI have live access to your doctors, registered pets, and appointments schedule. How can I help you today?\n\n* **Try asking me about**:\n* "Register a new pet named Max, Dog, Golden Retriever owned by Sarah"\n* "What are Doctor Sarah's specialties?"\n* "How can I resolve booking conflicts?"\n* "What should I do if my dog is scratching?"`;
 }
 
 app.post('/api/gemini/co-pilot', async (req, res) => {
@@ -485,25 +573,60 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       }
     });
 
+    const registerPetDeclaration = {
+      name: 'register_pet',
+      description: 'Register a new pet / patient in the clinic database so it appears in the Pets list and Patient Portal.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          name: { type: 'STRING' as any, description: 'Pet name (e.g. Max, Bella, Luna)' },
+          type: { type: 'STRING' as any, description: 'Species/Category (e.g. Dog, Cat, Bird, Rabbit)' },
+          breed: { type: 'STRING' as any, description: 'Pet breed (e.g. Golden Retriever, Siamese, Mixed)' },
+          age: { type: 'NUMBER' as any, description: 'Pet age in years' },
+          weight: { type: 'NUMBER' as any, description: 'Pet weight in kg' },
+          ownerName: { type: 'STRING' as any, description: 'Full name of owner' },
+          ownerEmail: { type: 'STRING' as any, description: 'Email address of owner' },
+          ownerPhone: { type: 'STRING' as any, description: 'Phone number of owner' },
+        },
+        required: ['name', 'type', 'ownerName'],
+      },
+    };
+
+    const scheduleAppointmentDeclaration = {
+      name: 'schedule_appointment',
+      description: 'Schedule an appointment for a registered pet with a doctor.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          petName: { type: 'STRING' as any, description: 'Name of the pet' },
+          doctorName: { type: 'STRING' as any, description: 'Name of the doctor' },
+          date: { type: 'STRING' as any, description: 'Appointment date YYYY-MM-DD' },
+          time: { type: 'STRING' as any, description: 'Time in HH:MM format' },
+          reason: { type: 'STRING' as any, description: 'Reason for visit' }
+        },
+        required: ['petName', 'doctorName', 'date', 'time'],
+      }
+    };
+
     // Provide context of current doctors, pets, and appointments
     const context = `
 You are the "AI Clinic Co-Pilot" for a premium veterinary practice, Pet Clinic Management.
-Your absolute primary objective is to DIRECTLY, IMMEDIATELY, and FULLY answer the user's specific query or question. Do NOT just passive-aggressively analyze or outline the conflict without giving a concrete solution. Always respond with friendly, direct answers.
+Your absolute primary objective is to DIRECTLY, IMMEDIATELY, and FULLY answer the user's specific query or question.
 
 Current Clinic Data State:
 Doctors Available:
 ${JSON.stringify(doctors.map(d => ({ id: d.id, name: d.name, specialty: d.specialty, days: d.workingDays, hours: d.workingHours })))}
 
 Registered Pets:
-${JSON.stringify(pets.map(p => ({ id: p.id, name: p.name, type: p.type, breed: p.breed, age: p.age })))}
+${JSON.stringify(pets.map(p => ({ id: p.id, name: p.name, type: p.type, breed: p.breed, age: p.age, ownerName: p.ownerName, ownerEmail: p.ownerEmail })))}
 
 Current Appointments scheduled:
 ${JSON.stringify(appointments.filter(a => a.status === 'Scheduled').map(a => ({ id: a.id, doctor: doctors.find(d => d.id === a.doctorId)?.name, date: a.date, time: a.time, reason: a.reason })))}
 
 Rules:
-1. ANSWER DIRECTLY: When a user asks a question, immediately provide the direct answer or action. Do not say "I am analyzing" or output meta-analysis. If they ask about a doctor's availability, state exactly when they are free or booked.
-2. SCHEDULING SOLUTIONS: If there is a scheduling conflict, check the doctor's working days/hours and current bookings. Suggest realistic, concrete alternative time slots (e.g., "Dr. Robert is free on Monday at 11:00 AM").
-3. SYMPTOMATIC CARE: If asked about symptoms, immediately offer comforting, actionable care steps (like proper hydration, safe food, cooling etc.) followed by a reminder to consult our clinic for a formal veterinary visit.
+1. PATIENT / PET REGISTRATION: When a user asks to register a pet or patient, you MUST call the "register_pet" tool. Once called, inform the user that the pet is now registered and saved live in the Pets list and Patient Portal.
+2. APPOINTMENT SCHEDULING: When a user asks to schedule or book an appointment, call the "schedule_appointment" tool.
+3. ANSWER DIRECTLY: When a user asks a question, immediately provide the direct answer or action. Do not say "I am analyzing" or output meta-analysis. If they ask about a doctor's availability, state exactly when they are free or booked.
 4. TONE: Keep responses friendly, structured (using bold text and clear spacing), extremely concise, and focused entirely on helping the user right away.
 `;
 
@@ -545,14 +668,41 @@ Rules:
       finalContents = [{ role: 'user', parts: [{ text: 'Hello' }] }];
     }
 
-    // Generate content
+    // Generate content with tools
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.6-flash',
       contents: finalContents,
       config: {
-        systemInstruction: context
+        systemInstruction: context,
+        tools: [{ functionDeclarations: [registerPetDeclaration, scheduleAppointmentDeclaration] }]
       }
     });
+
+    // Check for tool function calls
+    const functionCalls = response.functionCalls;
+    if (functionCalls && functionCalls.length > 0) {
+      let actionSummaries: string[] = [];
+
+      for (const call of functionCalls) {
+        if (call.name === 'register_pet') {
+          const registered = handleRegisterPet(call.args);
+          actionSummaries.push(`✅ **Registered New Pet**: **${registered.name}** (${registered.breed}, Owner: ${registered.ownerName}). Added to live database!`);
+        } else if (call.name === 'schedule_appointment') {
+          const result = handleScheduleAppointment(call.args);
+          if (result.success && result.appointment) {
+            actionSummaries.push(`✅ **Scheduled Appointment**: Date: ${result.appointment.date} at ${result.appointment.time} (Reason: ${result.appointment.reason}).`);
+          } else {
+            actionSummaries.push(`⚠️ **Scheduling Issue**: ${result.error || 'Could not schedule appointment.'}`);
+          }
+        }
+      }
+
+      const textOutput = response.text ? `\n\n${response.text}` : '';
+      return res.json({
+        role: 'assistant',
+        content: `${actionSummaries.join('\n\n')}${textOutput}\n\n*The Pets list and Clinic schedule have been updated in real-time.*`
+      });
+    }
 
     res.json({
       role: 'assistant',
