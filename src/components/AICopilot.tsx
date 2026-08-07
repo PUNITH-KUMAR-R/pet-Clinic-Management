@@ -9,7 +9,7 @@ interface AICopilotProps {
 const DEFAULT_INITIAL_MESSAGE: CoPilotMessage = {
   id: 'init',
   role: 'assistant',
-  content: 'Hi! I am your AI Clinic Co-pilot. I have live access to your doctors, registered pets, and appointments schedule. Ask me to:\n\n* **Resolve booking conflicts**: e.g., "Doctor Sarah is busy at 10 AM, help find another time or general doctor."\n* **Symptomatic Guidelines**: e.g., "Bella is scratching her paws frequently, what should I do?"',
+  content: '👋 Hi! I am your AI Practice Assistant. I have live access to our clinic database and can assist you with:\n\n* **Register Doctor**: e.g., "Register doctor Dr. Alan Grant, specialty Cardiology"\n* **Register Pet**: e.g., "Register pet Max, Dog, Golden Retriever owned by Sarah"\n* **Recommend Doctor**: e.g., "Which doctor is best for my pet\'s skin itching?"\n* **Book Appointment**: e.g., "Schedule appointment for Bella with Dr. Sarah Jenkins on 2026-08-15 at 10:00"',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 };
 
@@ -52,9 +52,10 @@ export default function AICopilot({ onRefreshData }: AICopilotProps) {
   };
 
   const quickPrompts = [
-    'Help resolve Monday 10:00 booking issue',
-    'Symptom advisor: Cat vomiting care guidelines',
-    'Dr. Robert Chen scheduling availability slots'
+    'Register doctor Dr. Maya Patel, specialty Neurology',
+    'Register pet Milo, Cat, Persian owned by David',
+    'Which doctor is best for skin rashes and itching?',
+    'Schedule appointment for Bella with Dr. Sarah Jenkins on 2026-08-15 at 10:00'
   ];
 
   const handleSend = async (text: string) => {
