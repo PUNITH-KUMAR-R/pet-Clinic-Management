@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, ShieldAlert, FileText, Search, User, Mail, Phone, Calendar, Heart, ShieldPlus, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
 import { Pet, MedicalRecord, Doctor } from '../types';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 interface PetsManagerProps {
   pets: Pet[];
@@ -107,22 +108,46 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this pet profile? All medical history and appointments will be removed.')) {
-      return;
-    }
+  const [deletingPet, setDeletingPet] = useState<Pet | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const handleConfirmPermanentDelete = async () => {
+    if (!deletingPet) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/pets/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/pets/${deletingPet.id}?permanent=true`, { method: 'DELETE' });
       const data = await response.json();
       if (response.ok) {
-        setSuccess('Pet profile deleted successfully.');
+        setSuccess(`Pet profile "${deletingPet.name}" permanently deleted.`);
         onRefresh();
       } else {
         setError(data.error || 'Failed to delete pet profile.');
       }
     } catch (err) {
       setError('Connection failure.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingPet(null);
+    }
+  };
+
+  const handleConfirmMoveToTrash = async () => {
+    if (!deletingPet) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/pets/${deletingPet.id}?permanent=false`, { method: 'DELETE' });
+      const data = await response.json();
+      if (response.ok) {
+        setSuccess(`Pet profile "${deletingPet.name}" moved to Trash / Deleted Data (trash.json).`);
+        onRefresh();
+      } else {
+        setError(data.error || 'Failed to move pet profile to trash.');
+      }
+    } catch (err) {
+      setError('Connection failure.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingPet(null);
     }
   };
 
@@ -510,7 +535,7 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(pet.id)}
+                    onClick={() => setDeletingPet(pet)}
                     className="p-1.5 border border-slate-200 rounded-xl text-slate-600 hover:text-rose-600 hover:border-rose-500 transition-all duration-150 cursor-pointer bg-white"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -578,6 +603,16 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
           </div>
         )}
       </div>
+
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingPet)}
+        itemType="pet"
+        itemName={deletingPet ? `${deletingPet.name} (${deletingPet.breed})` : ''}
+        onConfirmPermanent={handleConfirmPermanentDelete}
+        onConfirmMoveToTrash={handleConfirmMoveToTrash}
+        onCancel={() => setDeletingPet(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

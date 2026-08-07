@@ -60,3 +60,12 @@ export interface CoPilotMessage {
   content: string;
   timestamp: string;
 }
+
+export interface TrashItem {
+  id: string;
+  itemType: 'doctor' | 'pet' | 'appointment';
+  deletedAt: string;
+  itemName: string;
+  data: Doctor | Pet | Appointment;
+}
+

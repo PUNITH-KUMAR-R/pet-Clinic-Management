@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, Edit2, Trash2, Heart, AlertCircle, Sparkles, Check, CheckCircle2, XCircle, Trash } from 'lucide-react';
 import { Appointment, Pet, Doctor } from '../types';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 interface AppointmentsManagerProps {
   appointments: Appointment[];
@@ -95,15 +96,16 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this appointment?')) {
-      return;
-    }
+  const [deletingApt, setDeletingApt] = useState<Appointment | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const handleConfirmPermanentDelete = async () => {
+    if (!deletingApt) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/appointments/${deletingApt.id}?permanent=true`, { method: 'DELETE' });
       if (response.ok) {
-        setSuccess('Appointment successfully deleted.');
+        setSuccess('Appointment permanently deleted.');
         onRefresh();
       } else {
         const data = await response.json();
@@ -111,6 +113,29 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
       }
     } catch (err) {
       setError('Unable to reach backend services.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingApt(null);
+    }
+  };
+
+  const handleConfirmMoveToTrash = async () => {
+    if (!deletingApt) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/appointments/${deletingApt.id}?permanent=false`, { method: 'DELETE' });
+      if (response.ok) {
+        setSuccess('Appointment moved to Trash / Deleted Data (trash.json).');
+        onRefresh();
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to move appointment to trash.');
+      }
+    } catch (err) {
+      setError('Unable to reach backend services.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingApt(null);
     }
   };
 
@@ -355,7 +380,7 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
                           <Edit2 className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={() => handleDelete(apt.id)}
+                          onClick={() => setDeletingApt(apt)}
                           className="p-1.5 border border-slate-200 rounded-lg text-slate-600 hover:text-rose-600 hover:border-rose-500 transition-colors duration-150 cursor-pointer bg-white"
                           title="Delete Appointment"
                         >
@@ -379,6 +404,16 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
           </table>
         </div>
       </div>
+
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingApt)}
+        itemType="appointment"
+        itemName={deletingApt ? `Appointment on ${deletingApt.date} at ${deletingApt.time}` : ''}
+        onConfirmPermanent={handleConfirmPermanentDelete}
+        onConfirmMoveToTrash={handleConfirmMoveToTrash}
+        onCancel={() => setDeletingApt(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

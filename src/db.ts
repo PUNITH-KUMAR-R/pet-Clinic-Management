@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { Doctor, Pet, Appointment, MedicalRecord } from './types';
+import { Doctor, Pet, Appointment, MedicalRecord, TrashItem } from './types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'clinic_db.json');
+const TRASH_FILE = path.join(DATA_DIR, 'trash.json');
 
 export interface ClinicDatabase {
   doctors: Doctor[];
@@ -252,18 +253,29 @@ class DatabaseManager {
 
   public deleteDoctor(id: string): boolean {
     const db = this.read();
+    let foundInDb = false;
     const initialLen = db.doctors.length;
     db.doctors = db.doctors.filter(d => d.id !== id);
     
     if (db.doctors.length !== initialLen) {
+      foundInDb = true;
       // Cancel appointments associated with deleted doctor
       db.appointments = db.appointments.map(apt => 
-        apt.doctorId === id ? { ...apt, status: 'Cancelled', notes: 'Doctor no longer with clinic' } : apt
+        apt.doctorId === id ? { ...apt, status: 'Cancelled', notes: 'Doctor permanently deleted' } : apt
       );
       this.save(db);
-      return true;
     }
-    return false;
+
+    // Always clean up from trash as well if present
+    const trashItems = this.readTrash();
+    const updatedTrash = trashItems.filter(t => !(t.itemType === 'doctor' && ((t.data as Doctor).id === id || t.id === id)));
+    let foundInTrash = false;
+    if (updatedTrash.length !== trashItems.length) {
+      foundInTrash = true;
+      this.saveTrash(updatedTrash);
+    }
+
+    return foundInDb || foundInTrash;
   }
 
   // Pets
@@ -295,15 +307,26 @@ class DatabaseManager {
 
   public deletePet(id: string): boolean {
     const db = this.read();
+    let foundInDb = false;
     const initialLen = db.pets.length;
     db.pets = db.pets.filter(p => p.id !== id);
     
     if (db.pets.length !== initialLen) {
+      foundInDb = true;
       db.appointments = db.appointments.filter(apt => apt.petId !== id);
       this.save(db);
-      return true;
     }
-    return false;
+
+    // Always clean up from trash as well if present
+    const trashItems = this.readTrash();
+    const updatedTrash = trashItems.filter(t => !(t.itemType === 'pet' && ((t.data as Pet).id === id || t.id === id)));
+    let foundInTrash = false;
+    if (updatedTrash.length !== trashItems.length) {
+      foundInTrash = true;
+      this.saveTrash(updatedTrash);
+    }
+
+    return foundInDb || foundInTrash;
   }
 
   public addMedicalRecord(petId: string, recordData: Omit<MedicalRecord, 'id' | 'date'>): MedicalRecord | null {
@@ -350,14 +373,189 @@ class DatabaseManager {
 
   public deleteAppointment(id: string): boolean {
     const db = this.read();
+    let foundInDb = false;
     const initialLen = db.appointments.length;
     db.appointments = db.appointments.filter(a => a.id !== id);
 
     if (db.appointments.length !== initialLen) {
+      foundInDb = true;
       this.save(db);
+    }
+
+    // Always clean up from trash as well if present
+    const trashItems = this.readTrash();
+    const updatedTrash = trashItems.filter(t => !(t.itemType === 'appointment' && ((t.data as Appointment).id === id || t.id === id)));
+    let foundInTrash = false;
+    if (updatedTrash.length !== trashItems.length) {
+      foundInTrash = true;
+      this.saveTrash(updatedTrash);
+    }
+
+    return foundInDb || foundInTrash;
+  }
+
+  // ------------------------------------
+  // Trash / Deleted Data Storage Operations
+  // ------------------------------------
+  public readTrash(): TrashItem[] {
+    try {
+      if (!fs.existsSync(TRASH_FILE)) {
+        if (!fs.existsSync(DATA_DIR)) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        fs.writeFileSync(TRASH_FILE, JSON.stringify([], null, 2), 'utf-8');
+        return [];
+      }
+      const data = fs.readFileSync(TRASH_FILE, 'utf-8');
+      return JSON.parse(data) as TrashItem[];
+    } catch (err) {
+      console.error('Failed to read trash file:', err);
+      return [];
+    }
+  }
+
+  public saveTrash(trashItems: TrashItem[]): void {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(TRASH_FILE, JSON.stringify(trashItems, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Failed to save trash file:', err);
+    }
+  }
+
+  public trashDoctor(id: string): boolean {
+    const db = this.read();
+    const doc = db.doctors.find(d => d.id === id);
+    if (!doc) return false;
+
+    // Move to trash
+    const trashItems = this.readTrash();
+    trashItems.unshift({
+      id: `trash-doc-${Date.now()}`,
+      itemType: 'doctor',
+      deletedAt: new Date().toISOString(),
+      itemName: doc.name,
+      data: doc
+    });
+    this.saveTrash(trashItems);
+
+    // Delete from active doctors and cancel associated appointments
+    db.doctors = db.doctors.filter(d => d.id !== id);
+    db.appointments = db.appointments.map(apt =>
+      apt.doctorId === id ? { ...apt, status: 'Cancelled', notes: 'Doctor moved to trash' } : apt
+    );
+    this.save(db);
+    return true;
+  }
+
+  public trashPet(id: string): boolean {
+    const db = this.read();
+    const pet = db.pets.find(p => p.id === id);
+    if (!pet) return false;
+
+    const trashItems = this.readTrash();
+    trashItems.unshift({
+      id: `trash-pet-${Date.now()}`,
+      itemType: 'pet',
+      deletedAt: new Date().toISOString(),
+      itemName: `${pet.name} (${pet.breed})`,
+      data: pet
+    });
+    this.saveTrash(trashItems);
+
+    db.pets = db.pets.filter(p => p.id !== id);
+    db.appointments = db.appointments.filter(apt => apt.petId !== id);
+    this.save(db);
+    return true;
+  }
+
+  public trashAppointment(id: string): boolean {
+    const db = this.read();
+    const apt = db.appointments.find(a => a.id === id);
+    if (!apt) return false;
+
+    const pet = db.pets.find(p => p.id === apt.petId);
+    const doc = db.doctors.find(d => d.id === apt.doctorId);
+    const itemName = `Appointment on ${apt.date} at ${apt.time} (${pet ? pet.name : 'Pet'} with ${doc ? doc.name : 'Doctor'})`;
+
+    const trashItems = this.readTrash();
+    trashItems.unshift({
+      id: `trash-apt-${Date.now()}`,
+      itemType: 'appointment',
+      deletedAt: new Date().toISOString(),
+      itemName,
+      data: apt
+    });
+    this.saveTrash(trashItems);
+
+    db.appointments = db.appointments.filter(a => a.id !== id);
+    this.save(db);
+    return true;
+  }
+
+  public restoreFromTrash(trashId: string): { success: boolean; itemType?: string; error?: string } {
+    const trashItems = this.readTrash();
+    const idx = trashItems.findIndex(t => t.id === trashId);
+    if (idx === -1) {
+      return { success: false, error: 'Item not found in trash.' };
+    }
+
+    const item = trashItems[idx];
+    const db = this.read();
+
+    if (item.itemType === 'doctor') {
+      const doc = item.data as Doctor;
+      if (!db.doctors.some(d => d.id === doc.id)) {
+        db.doctors.push(doc);
+      }
+    } else if (item.itemType === 'pet') {
+      const pet = item.data as Pet;
+      if (!db.pets.some(p => p.id === pet.id)) {
+        db.pets.push(pet);
+      }
+    } else if (item.itemType === 'appointment') {
+      const apt = item.data as Appointment;
+      if (!db.appointments.some(a => a.id === apt.id)) {
+        db.appointments.push(apt);
+      }
+    }
+
+    this.save(db);
+    trashItems.splice(idx, 1);
+    this.saveTrash(trashItems);
+
+    return { success: true, itemType: item.itemType };
+  }
+
+  public permanentlyDeleteFromTrash(trashId: string): boolean {
+    const trashItems = this.readTrash();
+    const item = trashItems.find(t => t.id === trashId);
+
+    const updated = trashItems.filter(t => t.id !== trashId);
+    let removedFromTrash = updated.length !== trashItems.length;
+    if (removedFromTrash) {
+      this.saveTrash(updated);
+    }
+
+    if (item) {
+      if (item.itemType === 'doctor') {
+        this.deleteDoctor((item.data as Doctor).id);
+      } else if (item.itemType === 'pet') {
+        this.deletePet((item.data as Pet).id);
+      } else if (item.itemType === 'appointment') {
+        this.deleteAppointment((item.data as Appointment).id);
+      }
       return true;
     }
-    return false;
+
+    return removedFromTrash;
+  }
+
+  public emptyTrash(): boolean {
+    this.saveTrash([]);
+    return true;
   }
 }
 

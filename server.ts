@@ -59,9 +59,13 @@ app.put('/api/doctors/:id', (req, res) => {
 
 app.delete('/api/doctors/:id', (req, res) => {
   const { id } = req.params;
-  const deleted = db.deleteDoctor(id);
+  const isPermanent = req.query.permanent === 'true';
+  const deleted = isPermanent ? db.deleteDoctor(id) : db.trashDoctor(id);
   if (deleted) {
-    res.json({ success: true, message: 'Doctor deleted and associated appointments updated.' });
+    res.json({ 
+      success: true, 
+      message: isPermanent ? 'Doctor permanently deleted.' : 'Doctor moved to Trash / Deleted Data.' 
+    });
   } else {
     res.status(404).json({ error: 'Doctor not found' });
   }
@@ -111,9 +115,13 @@ app.put('/api/pets/:id', (req, res) => {
 
 app.delete('/api/pets/:id', (req, res) => {
   const { id } = req.params;
-  const deleted = db.deletePet(id);
+  const isPermanent = req.query.permanent === 'true';
+  const deleted = isPermanent ? db.deletePet(id) : db.trashPet(id);
   if (deleted) {
-    res.json({ success: true, message: 'Pet and associated appointments removed.' });
+    res.json({ 
+      success: true, 
+      message: isPermanent ? 'Pet permanently deleted.' : 'Pet profile moved to Trash / Deleted Data.' 
+    });
   } else {
     res.status(404).json({ error: 'Pet not found' });
   }
@@ -262,12 +270,48 @@ app.put('/api/appointments/:id', (req, res) => {
 
 app.delete('/api/appointments/:id', (req, res) => {
   const { id } = req.params;
-  const deleted = db.deleteAppointment(id);
+  const isPermanent = req.query.permanent === 'true';
+  const deleted = isPermanent ? db.deleteAppointment(id) : db.trashAppointment(id);
   if (deleted) {
-    res.json({ success: true, message: 'Appointment deleted.' });
+    res.json({ 
+      success: true, 
+      message: isPermanent ? 'Appointment permanently deleted.' : 'Appointment moved to Trash / Deleted Data.' 
+    });
   } else {
     res.status(404).json({ error: 'Appointment not found.' });
   }
+});
+
+// ------------------------------------
+// Trash / Deleted Data Endpoints
+// ------------------------------------
+app.get('/api/trash', (req, res) => {
+  res.json(db.readTrash());
+});
+
+app.post('/api/trash/:id/restore', (req, res) => {
+  const { id } = req.params;
+  const result = db.restoreFromTrash(id);
+  if (result.success) {
+    res.json({ success: true, message: `Successfully restored ${result.itemType} from trash!` });
+  } else {
+    res.status(400).json({ error: result.error || 'Failed to restore item.' });
+  }
+});
+
+app.delete('/api/trash/:id', (req, res) => {
+  const { id } = req.params;
+  const deleted = db.permanentlyDeleteFromTrash(id);
+  if (deleted) {
+    res.json({ success: true, message: 'Item permanently deleted from trash.' });
+  } else {
+    res.status(404).json({ error: 'Item not found in trash.' });
+  }
+});
+
+app.delete('/api/trash', (req, res) => {
+  db.emptyTrash();
+  res.json({ success: true, message: 'Trash emptied successfully.' });
 });
 
 // ------------------------------------

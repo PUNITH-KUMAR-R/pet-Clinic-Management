@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Calendar, Clock, Phone, Mail, FileText, UserPlus, X, Check } from 'lucide-react';
 import { Doctor } from '../types';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 interface DoctorsManagerProps {
   doctors: Doctor[];
@@ -130,24 +131,50 @@ export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFor
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to remove this doctor? Associated appointments will be automatically cancelled.')) {
-      return;
-    }
+  const [deletingDoctor, setDeletingDoctor] = useState<Doctor | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
+  const handleConfirmPermanentDelete = async () => {
+    if (!deletingDoctor) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/doctors/${id}`, {
+      const response = await fetch(`/api/doctors/${deletingDoctor.id}?permanent=true`, {
         method: 'DELETE'
       });
       const data = await response.json();
       if (response.ok) {
-        setSuccess('Doctor removed successfully.');
+        setSuccess(`Doctor "${deletingDoctor.name}" permanently deleted.`);
         onRefresh();
       } else {
         setError(data.error || 'Failed to delete doctor.');
       }
     } catch (err) {
       setError('Failed to reach server.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingDoctor(null);
+    }
+  };
+
+  const handleConfirmMoveToTrash = async () => {
+    if (!deletingDoctor) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/doctors/${deletingDoctor.id}?permanent=false`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSuccess(`Doctor "${deletingDoctor.name}" moved to Trash / Deleted Data (trash.json).`);
+        onRefresh();
+      } else {
+        setError(data.error || 'Failed to move doctor to trash.');
+      }
+    } catch (err) {
+      setError('Failed to reach server.');
+    } finally {
+      setIsDeleting(false);
+      setDeletingDoctor(null);
     }
   };
 
@@ -421,7 +448,7 @@ export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFor
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => handleDelete(doc.id)}
+                onClick={() => setDeletingDoctor(doc)}
                 className="p-1.5 border border-slate-200 rounded-xl text-slate-600 hover:text-rose-600 hover:border-rose-500 transition-all duration-150 cursor-pointer flex items-center justify-center bg-white"
                 title="Remove Doctor"
               >
@@ -438,6 +465,16 @@ export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFor
           </div>
         )}
       </div>
+
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingDoctor)}
+        itemType="doctor"
+        itemName={deletingDoctor?.name || ''}
+        onConfirmPermanent={handleConfirmPermanentDelete}
+        onConfirmMoveToTrash={handleConfirmMoveToTrash}
+        onCancel={() => setDeletingDoctor(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

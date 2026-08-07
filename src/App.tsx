@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download, Trash2 } from 'lucide-react';
 import DoctorsManager from './components/DoctorsManager';
 import PetsManager from './components/PetsManager';
 import AppointmentsManager from './components/AppointmentsManager';
 import PatientPortal from './components/PatientPortal';
 import DevOpsHub from './components/DevOpsHub';
 import NotificationsPage from './components/NotificationsPage';
+import TrashManager from './components/TrashManager';
 import AICopilot from './components/AICopilot';
 import { Doctor, Pet, Appointment } from './types';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'appointments' | 'pets' | 'doctors' | 'portal' | 'devops' | 'notifications'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'pets' | 'doctors' | 'portal' | 'devops' | 'notifications' | 'trash'>('appointments');
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -38,6 +39,15 @@ export default function App() {
     }
     localStorage.setItem('vetcore_theme', theme);
   }, [theme]);
+
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeTab]);
 
   const handleExportLogs = () => {
     const timestamp = new Date().toISOString();
@@ -210,6 +220,18 @@ export default function App() {
             <Bell className="w-4.5 h-4.5 shrink-0" />
             <span>Notifications</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('trash')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs cursor-pointer transition-all ${
+              activeTab === 'trash'
+                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+            }`}
+          >
+            <Trash2 className="w-4.5 h-4.5 shrink-0" />
+            <span>Deleted Data / Trash</span>
+          </button>
           
           <button
             onClick={() => setActiveTab('devops')}
@@ -272,6 +294,7 @@ export default function App() {
                 { id: 'doctors', label: 'Veterinary Staff', icon: ClipboardList },
                 { id: 'portal', label: 'Patient Portal', icon: Layers },
                 { id: 'notifications', label: 'Notifications', icon: Bell },
+                { id: 'trash', label: 'Deleted Data / Trash', icon: Trash2 },
                 { id: 'devops', label: 'DevOps & Scale Hub', icon: Terminal },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -306,7 +329,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+      <main ref={mainRef} className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         
         {/* Top Header */}
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between shrink-0">
@@ -455,6 +478,11 @@ export default function App() {
                     pets={pets}
                     doctors={doctors}
                     onNavigateTab={(tab) => setActiveTab(tab)}
+                  />
+                )}
+                {activeTab === 'trash' && (
+                  <TrashManager
+                    onRefreshClinicData={fetchData}
                   />
                 )}
                 {activeTab === 'devops' && (
