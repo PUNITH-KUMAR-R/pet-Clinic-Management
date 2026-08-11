@@ -156,6 +156,102 @@ function getNextDateForDay(dayName: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function parseWorkingDays(scheduleStr: string): string[] {
+  const lower = scheduleStr.toLowerCase();
+  const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const shortDaysMap: Record<string, number> = {
+    sun: 0, sunday: 0,
+    mon: 1, monday: 1,
+    tue: 2, tues: 2, tuesday: 2,
+    wed: 3, wednesday: 3,
+    thu: 4, thur: 4, thurs: 4, thursday: 4,
+    fri: 5, friday: 5,
+    sat: 6, saturday: 6
+  };
+
+  if (lower.includes('everyday') || lower.includes('all days') || lower.includes('7 days') || lower.includes('daily')) {
+    return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  }
+
+  // Check for range e.g. "Monday to Friday" or "Mon - Fri" or "Mon-Fri"
+  const rangeMatch = lower.match(/\b(sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)\s*(?:to|-|through|until)\s*(sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)\b/i);
+
+  if (rangeMatch) {
+    const startIdx = shortDaysMap[rangeMatch[1].toLowerCase()];
+    const endIdx = shortDaysMap[rangeMatch[2].toLowerCase()];
+    if (startIdx !== undefined && endIdx !== undefined) {
+      const resultDays: string[] = [];
+      let current = startIdx;
+      while (true) {
+        resultDays.push(allDays[current]);
+        if (current === endIdx) break;
+        current = (current + 1) % 7;
+      }
+      if (resultDays.length > 0) return resultDays;
+    }
+  }
+
+  // Check for individual days explicitly mentioned
+  const detectedIndices = new Set<number>();
+  const dayTokens = lower.match(/\b(sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)\b/gi);
+  if (dayTokens) {
+    dayTokens.forEach(t => {
+      const idx = shortDaysMap[t.toLowerCase()];
+      if (idx !== undefined) detectedIndices.add(idx);
+    });
+  }
+
+  if (detectedIndices.size > 0) {
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const sorted = order.filter(i => detectedIndices.has(i)).map(i => allDays[i]);
+    return sorted;
+  }
+
+  return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+}
+
+function parseWorkingHours(scheduleStr: string): { start: string; end: string } {
+  const rangeRegex = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:to|-|until|–)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
+  const match = scheduleStr.match(rangeRegex);
+
+  if (match) {
+    let startHour = parseInt(match[1], 10);
+    const startMin = match[2] || '00';
+    let startAmpm = match[3] ? match[3].toLowerCase() : null;
+
+    let endHour = parseInt(match[4], 10);
+    const endMin = match[5] || '00';
+    let endAmpm = match[6] ? match[6].toLowerCase() : null;
+
+    if (!startAmpm && !endAmpm) {
+      if (endHour < startHour || (endHour < 12 && startHour >= 7)) {
+        if (endHour < startHour) endAmpm = 'pm';
+      }
+    }
+    if (!startAmpm && endAmpm === 'pm') {
+      if (startHour <= 12 && startHour >= 7) startAmpm = 'am';
+      else if (startHour < 7) startAmpm = 'pm';
+    }
+    if (startAmpm === 'am' && !endAmpm) {
+      if (endHour < startHour || endHour <= 7) endAmpm = 'pm';
+      else endAmpm = 'am';
+    }
+
+    if (startAmpm === 'pm' && startHour < 12) startHour += 12;
+    if (startAmpm === 'am' && startHour === 12) startHour = 0;
+
+    if (endAmpm === 'pm' && endHour < 12) endHour += 12;
+    if (endAmpm === 'am' && endHour === 12) endHour = 0;
+
+    const startFormatted = `${String(startHour).padStart(2, '0')}:${startMin}`;
+    const endFormatted = `${String(endHour).padStart(2, '0')}:${endMin}`;
+
+    return { start: startFormatted, end: endFormatted };
+  }
+
+  return { start: '09:00', end: '17:00' };
+}
+
 function parseTimeString(input: string): string {
   const match = input.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i);
   if (!match) return '10:00';
@@ -347,14 +443,8 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
         setLoading(true);
         const scheduleStr = trimmed;
         
-        let workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        if (scheduleStr.toLowerCase().includes('mon') || scheduleStr.toLowerCase().includes('wed') || scheduleStr.toLowerCase().includes('sat')) {
-          const daysMap: Record<string, string> = {
-            mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
-          };
-          const detected = Object.keys(daysMap).filter(k => scheduleStr.toLowerCase().includes(k)).map(k => daysMap[k]);
-          if (detected.length > 0) workingDays = detected;
-        }
+        const workingDays = parseWorkingDays(scheduleStr);
+        const workingHours = parseWorkingHours(scheduleStr);
 
         const docPayload = {
           name: data.name,
@@ -365,7 +455,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
           bio: `${data.specialty} Specialist`,
           avatar: data.avatar,
           workingDays,
-          workingHours: { start: '09:00', end: '17:00' }
+          workingHours
         };
 
         try {
@@ -380,11 +470,15 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
           if (res.ok && registered && (registered.id || registered.name)) {
             const rawName = registered.name || data.name;
             const docDisplayName = rawName.toLowerCase().startsWith('dr.') ? rawName : `Dr. ${rawName}`;
+            
+            const startH = registered.workingHours?.start || workingHours.start;
+            const endH = registered.workingHours?.end || workingHours.end;
+            const formattedHours = `${formatTime12h(startH)} - ${formatTime12h(endH)}`;
 
             setMessages(prev => [...prev, {
               id: `complete-${Date.now()}`,
               role: 'assistant',
-              content: `🎉 **DOCTOR REGISTRATION COMPLETED!**\n\n**${docDisplayName}** (${data.gender || 'Male'}) has been successfully registered in the clinic database with an appropriate profile photo!\n\n📋 **Doctor Summary Card:**\n• **Gender:** ${data.gender || 'Male'}\n• **Specialty:** ${registered.specialty}\n• **Email:** ${registered.email}\n• **Phone:** ${registered.phone}\n• **Available Grid:** ${Array.isArray(registered.workingDays) ? registered.workingDays.join(', ') : 'Mon - Fri'} (${registered.workingHours?.start || '09:00'} - ${registered.workingHours?.end || '17:00'})\n\n*Live clinic schedule updated!*`,
+              content: `🎉 **DOCTOR REGISTRATION COMPLETED!**\n\n**${docDisplayName}** (${data.gender || 'Male'}) has been successfully registered in the clinic database with an appropriate profile photo!\n\n📋 **Doctor Summary Card:**\n• **Gender:** ${data.gender || 'Male'}\n• **Specialty:** ${registered.specialty}\n• **Email:** ${registered.email}\n• **Phone:** ${registered.phone}\n• **Available Grid:** ${Array.isArray(registered.workingDays) ? registered.workingDays.join(', ') : 'Mon - Fri'} (${formattedHours})\n\n*Live clinic schedule updated!*`,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);
             if (onRefreshData) onRefreshData();
