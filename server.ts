@@ -14,10 +14,33 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Helper to determine day of week from YYYY-MM-DD
+// Helper to determine day of week from YYYY-MM-DD without timezone offset issues
 function getDayName(dateString: string): string {
+  if (!dateString) return '';
+  const parts = dateString.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, month, day, 12, 0, 0);
+    return date.toLocaleDateString('en-US', { weekday: 'long' });
+  }
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { weekday: 'long' });
+}
+
+function timeToMinutes(tStr: string): number {
+  if (!tStr) return 0;
+  const match = tStr.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM|am|pm)?/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const period = match[3] ? match[3].toUpperCase() : null;
+
+  if (period === 'PM' && hours < 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
 }
 
 // ------------------------------------
@@ -28,18 +51,24 @@ app.get('/api/doctors', (req, res) => {
 });
 
 app.post('/api/doctors', (req, res) => {
-  const { name, specialty, email, phone, bio, avatar, workingDays, workingHours } = req.body;
+  const { name, gender, specialty, email, phone, bio, avatar, workingDays, workingHours } = req.body;
   if (!name || !email || !phone) {
     return res.status(400).json({ error: 'Name, email, and phone are required.' });
   }
 
+  const isFemale = gender === 'Female' || (gender && gender.toLowerCase().includes('female'));
+  const defaultAvatar = isFemale 
+    ? 'https://images.unsplash.com/photo-1594824813566-78a08c8e1e7f?auto=format&fit=crop&q=80&w=300'
+    : 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300';
+
   const newDoc = db.addDoctor({
     name,
+    gender: gender || 'Male',
     specialty: specialty || 'General Medicine',
     email,
     phone,
     bio: bio || 'Veterinary practitioner at Pet Clinic Management.',
-    avatar: avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300',
+    avatar: avatar || defaultAvatar,
     workingDays: Array.isArray(workingDays) && workingDays.length > 0 ? workingDays : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     workingHours: workingHours || { start: '09:00', end: '17:00' }
   });
@@ -184,7 +213,10 @@ app.post('/api/appointments', (req, res) => {
   }
 
   // 4. Validate working hours
-  if (time < doctor.workingHours.start || time > doctor.workingHours.end) {
+  const apptMins = timeToMinutes(time);
+  const startMins = timeToMinutes(doctor.workingHours.start);
+  const endMins = timeToMinutes(doctor.workingHours.end);
+  if (apptMins < startMins || apptMins > endMins) {
     return res.status(400).json({ 
       error: `Time slot ${time} is outside of ${doctor.name}'s working hours (${doctor.workingHours.start} - ${doctor.workingHours.end}).` 
     });
@@ -318,13 +350,19 @@ app.delete('/api/trash', (req, res) => {
 // AI Co-Pilot Handlers & Simulation Logic
 // ------------------------------------
 function handleRegisterDoctor(args: any): Doctor {
+  const isFemale = args.gender === 'Female' || (args.gender && String(args.gender).toLowerCase().includes('female'));
+  const defaultAvatar = isFemale 
+    ? 'https://images.unsplash.com/photo-1594824813566-78a08c8e1e7f?auto=format&fit=crop&q=80&w=300'
+    : 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300';
+
   const newDoc = db.addDoctor({
     name: args.name || args.doctorName || 'Dr. New Doctor',
+    gender: args.gender || 'Male',
     specialty: args.specialty || 'General Medicine',
     email: args.email || `dr.${(args.name || 'doctor').toLowerCase().replace(/[^a-z0-9]/g, '')}@petclinic.com`,
     phone: args.phone || '555-0190',
     bio: args.bio || `Veterinary practitioner specializing in ${args.specialty || 'General Medicine'}.`,
-    avatar: args.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300',
+    avatar: args.avatar || defaultAvatar,
     workingDays: Array.isArray(args.workingDays) && args.workingDays.length > 0 
       ? args.workingDays 
       : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
@@ -381,7 +419,10 @@ function handleScheduleAppointment(args: any): { success: boolean; appointment?:
   }
 
   // Check working hours
-  if (time < doctor.workingHours.start || time > doctor.workingHours.end) {
+  const apptMins = timeToMinutes(time);
+  const startMins = timeToMinutes(doctor.workingHours.start);
+  const endMins = timeToMinutes(doctor.workingHours.end);
+  if (apptMins < startMins || apptMins > endMins) {
     return {
       success: false,
       error: `Time ${time} is outside ${doctor.name}'s hours (${doctor.workingHours.start} - ${doctor.workingHours.end}).`
@@ -598,8 +639,16 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
     return res.status(400).json({ error: 'Messages array is required.' });
   }
 
-  const geminiKey = process.env.GEMINI_API_KEY?.trim();
-  const isPlaceholderKey = !geminiKey || geminiKey.toLowerCase().includes('your_gemini_api_key') || geminiKey.toLowerCase().includes('placeholder') || geminiKey === 'your_api_key_here';
+  const geminiKey = process.env.GEMINI_API_KEY?.trim() || '';
+  const lowerKey = geminiKey.toLowerCase();
+  const isPlaceholderKey = 
+    !geminiKey || 
+    lowerKey.includes('your') || 
+    lowerKey.includes('placeholder') || 
+    lowerKey.includes('dummy') || 
+    lowerKey.includes('sample') || 
+    lowerKey.includes('aizasyyour') || 
+    lowerKey.length < 20;
 
   if (isPlaceholderKey) {
     const lastUserMessage = messages[messages.length - 1]?.content || '';
@@ -793,7 +842,16 @@ Instructions:
     });
 
   } catch (error: any) {
-    console.error('Gemini API Error:', error);
+    const isApiKeyError = error?.status === 400 || 
+      error?.message?.includes('API key not valid') || 
+      error?.message?.includes('API_KEY_INVALID') ||
+      JSON.stringify(error || {}).includes('API_KEY_INVALID');
+
+    if (isApiKeyError) {
+      console.warn('Gemini API Key is invalid or expired. Falling back seamlessly to built-in smart AI Co-Pilot simulator.');
+    } else {
+      console.error('Gemini API Error:', error?.message || error);
+    }
 
     const lastUserMessage = messages[messages.length - 1]?.content || '';
     const dynamicReply = simulateResponse(lastUserMessage);

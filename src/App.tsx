@@ -492,7 +492,12 @@ export default function App() {
 
               {/* AI Assistant Right Wing Column */}
               <div className="xl:col-span-4 space-y-6">
-                <AICopilot onRefreshData={fetchData} />
+                <AICopilot
+                  onRefreshData={fetchData}
+                  pets={pets}
+                  doctors={doctors}
+                  appointments={appointments}
+                />
               </div>
               
             </div>

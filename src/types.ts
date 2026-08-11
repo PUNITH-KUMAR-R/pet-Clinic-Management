@@ -23,6 +23,7 @@ export interface Pet {
 export interface Doctor {
   id: string;
   name: string;
+  gender?: 'Male' | 'Female' | 'Other';
   specialty: 'General Medicine' | 'Surgery' | 'Dermatology' | 'Dentistry' | 'Cardiology' | 'Behavioral';
   email: string;
   phone: string;
@@ -59,6 +60,9 @@ export interface CoPilotMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  interactiveType?: 'doctor-reg' | 'pet-reg' | 'appointment-reg' | 'patient-portal-lookup';
+  formSubmitted?: boolean;
+  submittedData?: any;
 }
 
 export interface TrashItem {
