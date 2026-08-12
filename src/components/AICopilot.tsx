@@ -302,10 +302,10 @@ function parsePetNameAndSpecies(input: string): { name: string; species: string 
   return { name: cleaned, species };
 }
 
-function parsePetDetails(input: string, species: string): { breed: string; age: number; weight: number } {
+function parsePetDetails(input: string, species: string, petName?: string): { breed: string; age: number; weight: number } {
   // 1. Extract Age if specified with units e.g. "3 years", "3 yrs", "3y", "3 y/o", "3 mo"
   let ageVal: number | null = null;
-  const ageRegex = /\b(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y\/?o|y|months?|mos?|mo)\b/i;
+  const ageRegex = /\b(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y\/?o|yo|y|months?|mos?|mo)\b/i;
   const ageMatch = input.match(ageRegex);
   if (ageMatch) {
     let num = parseFloat(ageMatch[1]);
@@ -315,9 +315,9 @@ function parsePetDetails(input: string, species: string): { breed: string; age: 
     ageVal = num;
   }
 
-  // 2. Extract Weight if specified with units e.g. "15 kg", "15kg", "15 kilos", "15 lbs", "15 pounds"
+  // 2. Extract Weight if specified with units e.g. "15 kg", "15kgs", "15kg", "15 kilos", "15 lbs", "15 pounds"
   let weightVal: number | null = null;
-  const weightRegex = /\b(\d+(?:\.\d+)?)\s*(?:kg|kilo|kilos|kilograms?|lbs?|pounds?)\b/i;
+  const weightRegex = /\b(\d+(?:\.\d+)?)\s*(?:kgs?|kilo|kilos|kilograms?|lbs?|pounds?)\b/i;
   const weightMatch = input.match(weightRegex);
   if (weightMatch) {
     let num = parseFloat(weightMatch[1]);
@@ -334,6 +334,12 @@ function parsePetDetails(input: string, species: string): { breed: string; age: 
   }
   if (weightMatch) {
     remaining = remaining.replace(weightMatch[0], ' ');
+  }
+
+  // If petName is provided, strip petName from remaining text as well
+  if (petName) {
+    const escName = petName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    remaining = remaining.replace(new RegExp(`\\b${escName}\\b`, 'gi'), ' ');
   }
 
   // 4. Look for unparsed numbers if age or weight still missing
@@ -358,11 +364,15 @@ function parsePetDetails(input: string, species: string): { breed: string; age: 
     'his', 'her', 'my', 'our', 'their', 'the', 'a', 'an', 'pet', 'pets', "pet's",
     'breed', 'type', 'kind', 'is', 'was', 'are', 'and', 'he', 'she', 'it', 'they',
     'weighs', 'weighing', 'weight', 'age', 'aged', 'old', 'years', 'year', 'yrs', 'yr',
-    'months', 'month', 'mos', 'mo', 'kg', 'lbs', 'lb', 'kilos', 'kilo', 'pounds', 'pound',
+    'months', 'month', 'mos', 'mo', 'kg', 'kgs', 'lbs', 'lb', 'kilos', 'kilo', 'pounds', 'pound',
     'about', 'around', 'approx', 'approximately', 'of', 'with', 'for', 'named', 'called',
     'has', 'have', "it's", "he's", "she's", 'dog', 'cat', 'bird', 'rabbit', 'feline', 'canine',
     'puppy', 'kitten', 'bunny', 'parrot'
   ]);
+
+  if (petName) {
+    petName.toLowerCase().split(/\s+/).forEach(w => fillerWords.add(w));
+  }
 
   let cleanWords = cleanRemaining
     .replace(/[,-\/]/g, ' ')
@@ -689,7 +699,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
       }
       else if (step === 1) {
         // Step 1: Breed/Age/Weight -> Ask Owner Name & Email
-        const parsed = parsePetDetails(trimmed, data.type || 'Dog');
+        const parsed = parsePetDetails(trimmed, data.type || 'Dog', data.name);
 
         const newData = { 
           ...data, 
