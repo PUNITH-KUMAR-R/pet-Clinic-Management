@@ -429,33 +429,21 @@ function parseTimeString(input: string): string {
 }
 
 export default function AICopilot({ onRefreshData, pets = [], doctors = [], appointments = [] }: AICopilotProps) {
-  const [messages, setMessages] = useState<CoPilotMessage[]>(() => {
-    try {
-      const saved = localStorage.getItem('vetcore_copilot_messages');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load chat history', e);
-    }
-    return [DEFAULT_INITIAL_MESSAGE];
-  });
+  const [messages, setMessages] = useState<CoPilotMessage[]>([DEFAULT_INITIAL_MESSAGE]);
 
   const [activeWizard, setActiveWizard] = useState<ActiveWizardState | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Ensure any previous conversation stored in localStorage is cleared on app startup/reload
   useEffect(() => {
     try {
-      localStorage.setItem('vetcore_copilot_messages', JSON.stringify(messages));
+      localStorage.removeItem('vetcore_copilot_messages');
     } catch (e) {
-      console.error('Failed to save chat history', e);
+      console.error('Failed to clear chat storage', e);
     }
-  }, [messages]);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -464,7 +452,9 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
   const handleClearChat = () => {
     setMessages([DEFAULT_INITIAL_MESSAGE]);
     setActiveWizard(null);
-    localStorage.removeItem('vetcore_copilot_messages');
+    try {
+      localStorage.removeItem('vetcore_copilot_messages');
+    } catch (e) {}
   };
 
   const cancelWizard = () => {
