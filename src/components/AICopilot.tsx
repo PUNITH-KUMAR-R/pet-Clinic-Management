@@ -252,6 +252,91 @@ function parseWorkingHours(scheduleStr: string): { start: string; end: string } 
   return { start: '09:00', end: '17:00' };
 }
 
+function parsePetDetails(input: string, species: string): { breed: string; age: number; weight: number } {
+  // 1. Extract Age if specified with units e.g. "3 years", "3 yrs", "3y", "3 y/o", "3 mo"
+  let ageVal: number | null = null;
+  const ageRegex = /\b(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y\/?o|y|months?|mos?|mo)\b/i;
+  const ageMatch = input.match(ageRegex);
+  if (ageMatch) {
+    let num = parseFloat(ageMatch[1]);
+    if (/month|mo/i.test(ageMatch[0])) {
+      num = Math.round((num / 12) * 10) / 10;
+    }
+    ageVal = num;
+  }
+
+  // 2. Extract Weight if specified with units e.g. "15 kg", "15kg", "15 kilos", "15 lbs", "15 pounds"
+  let weightVal: number | null = null;
+  const weightRegex = /\b(\d+(?:\.\d+)?)\s*(?:kg|kilo|kilos|kilograms?|lbs?|pounds?)\b/i;
+  const weightMatch = input.match(weightRegex);
+  if (weightMatch) {
+    let num = parseFloat(weightMatch[1]);
+    if (/lb|pound/i.test(weightMatch[0])) {
+      num = Math.round((num / 2.20462) * 10) / 10;
+    }
+    weightVal = num;
+  }
+
+  // 3. Remove matched age and weight strings from input
+  let remaining = input;
+  if (ageMatch) {
+    remaining = remaining.replace(ageMatch[0], ' ');
+  }
+  if (weightMatch) {
+    remaining = remaining.replace(weightMatch[0], ' ');
+  }
+
+  // 4. Look for unparsed numbers if age or weight still missing
+  let cleanRemaining = remaining.replace(/[,-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const unparsedNumbers = cleanRemaining.match(/\b\d+(?:\.\d+)?\b/g);
+
+  if (unparsedNumbers) {
+    for (const numStr of unparsedNumbers) {
+      const val = parseFloat(numStr);
+      if (ageVal === null) {
+        ageVal = val;
+        cleanRemaining = cleanRemaining.replace(numStr, '').trim();
+      } else if (weightVal === null) {
+        weightVal = val;
+        cleanRemaining = cleanRemaining.replace(numStr, '').trim();
+      }
+    }
+  }
+
+  // Clean remaining text for breed
+  let breedStr = cleanRemaining.replace(/[,-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // If breedStr is just the species name e.g. "Dog" or "Cat", or empty, use standard default breed
+  const lowerBreed = breedStr.toLowerCase();
+  const speciesWords = ['dog', 'cat', 'bird', 'rabbit', 'feline', 'canine', 'puppy', 'kitten', 'bunny', 'parrot'];
+  if (!breedStr || speciesWords.includes(lowerBreed)) {
+    breedStr = species === 'Cat' ? 'Domestic Shorthair' 
+             : species === 'Bird' ? 'Parakeet' 
+             : species === 'Rabbit' ? 'Holland Lop' 
+             : 'Mixed Breed';
+  } else {
+    // If breedStr has species word embedded like "Golden Retriever Dog", clean it up
+    for (const spWord of speciesWords) {
+      const reg = new RegExp(`\\b${spWord}\\b`, 'gi');
+      if (breedStr.toLowerCase() !== spWord) {
+        breedStr = breedStr.replace(reg, '').trim();
+      }
+    }
+  }
+
+  // Capitalize breed words nicely
+  breedStr = breedStr.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ').trim();
+
+  const defaultAge = species === 'Bird' ? 1 : 2;
+  const defaultWeight = species === 'Cat' ? 4 : species === 'Bird' ? 0.1 : species === 'Rabbit' ? 2 : 12;
+
+  return {
+    breed: breedStr || 'Mixed Breed',
+    age: ageVal !== null && !isNaN(ageVal) ? ageVal : defaultAge,
+    weight: weightVal !== null && !isNaN(weightVal) ? weightVal : defaultWeight
+  };
+}
+
 function parseTimeString(input: string): string {
   const match = input.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i);
   if (!match) return '10:00';
@@ -555,31 +640,21 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
       }
       else if (step === 1) {
         // Step 1: Breed/Age/Weight -> Ask Owner Name & Email
-        const ageMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:year|yr|y)/i);
-        const weightMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:kg|kilo|pound|lb)/i);
-
-        const breedParts = trimmed.split(/[,-\/]/);
-        let extractedBreed = breedParts[0]?.trim() || trimmed;
-        extractedBreed = extractedBreed.replace(/\d+.*$/, '').trim() || extractedBreed;
-
-        const ageVal = ageMatch ? parseFloat(ageMatch[1]) : (data.type === 'Bird' ? 1 : 2);
-        const defaultWeight = data.type === 'Cat' ? 4 : data.type === 'Bird' ? 0.1 : data.type === 'Rabbit' ? 2 : 12;
-        const weightVal = weightMatch ? parseFloat(weightMatch[1]) : defaultWeight;
-        const finalBreed = extractedBreed || (data.type === 'Cat' ? 'Domestic Shorthair' : 'Mixed Breed');
+        const parsed = parsePetDetails(trimmed, data.type || 'Dog');
 
         const newData = { 
           ...data, 
-          breed: finalBreed,
+          breed: parsed.breed,
           breedInfo: trimmed,
-          age: ageVal,
-          weight: weightVal
+          age: parsed.age,
+          weight: parsed.weight
         };
         setActiveWizard({ type, step: 2, data: newData });
 
         setMessages(prev => [...prev, {
           id: `step-${Date.now()}`,
           role: 'assistant',
-          content: `Recorded details for **${data.name}**: Breed: **${finalBreed}**, Age: **${ageVal} yrs**, Weight: **${weightVal} kg**.\n\nNext (Step 3/5): What is the **pet owner's full name** and **email address**?\n*(e.g., "John Doe, john.doe@gmail.com")*`,
+          content: `Recorded details for **${data.name}**: Breed: **${parsed.breed}**, Age: **${parsed.age} yrs**, Weight: **${parsed.weight} kg**.\n\nNext (Step 3/5): What is the **pet owner's full name** and **email address**?\n*(e.g., "John Doe, john.doe@gmail.com")*`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
       }
