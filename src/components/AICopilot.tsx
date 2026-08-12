@@ -303,10 +303,27 @@ function parsePetDetails(input: string, species: string): { breed: string; age: 
     }
   }
 
-  // Clean remaining text for breed
-  let breedStr = cleanRemaining.replace(/[,-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Clean remaining text for breed by stripping filler words
+  const fillerWords = new Set([
+    'his', 'her', 'my', 'our', 'their', 'the', 'a', 'an', 'pet', 'pets', "pet's",
+    'breed', 'type', 'kind', 'is', 'was', 'are', 'and', 'he', 'she', 'it', 'they',
+    'weighs', 'weighing', 'weight', 'age', 'aged', 'old', 'years', 'year', 'yrs', 'yr',
+    'months', 'month', 'mos', 'mo', 'kg', 'lbs', 'lb', 'kilos', 'kilo', 'pounds', 'pound',
+    'about', 'around', 'approx', 'approximately', 'of', 'with', 'for', 'named', 'called',
+    'has', 'have', "it's", "he's", "she's", 'dog', 'cat', 'bird', 'rabbit', 'feline', 'canine',
+    'puppy', 'kitten', 'bunny', 'parrot'
+  ]);
 
-  // If breedStr is just the species name e.g. "Dog" or "Cat", or empty, use standard default breed
+  let cleanWords = cleanRemaining
+    .replace(/[,-\/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(w => w && !fillerWords.has(w.toLowerCase()));
+
+  let breedStr = cleanWords.join(' ').trim();
+
+  // If breedStr is empty or just species name, use default breed
   const lowerBreed = breedStr.toLowerCase();
   const speciesWords = ['dog', 'cat', 'bird', 'rabbit', 'feline', 'canine', 'puppy', 'kitten', 'bunny', 'parrot'];
   if (!breedStr || speciesWords.includes(lowerBreed)) {
@@ -662,7 +679,14 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
         // Step 2: Owner Name/Email -> Ask Owner Phone
         const emailMatch = trimmed.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
         const email = emailMatch ? emailMatch[0] : 'owner@example.com';
-        const ownerName = trimmed.replace(email, '').replace(/[,]/g, '').trim() || 'Pet Owner';
+        let rawOwnerName = trimmed;
+        if (emailMatch) rawOwnerName = rawOwnerName.replace(emailMatch[0], '');
+        rawOwnerName = rawOwnerName
+          .replace(/\b(the|owner|owner's|name|is|email|address|his|her|my|our|and|contact|full|at|pet's|person|guardian)\b/gi, ' ')
+          .replace(/[,.-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const ownerName = rawOwnerName ? rawOwnerName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'Pet Owner';
 
         const newData = { ...data, ownerName, ownerEmail: email };
         setActiveWizard({ type, step: 3, data: newData });
