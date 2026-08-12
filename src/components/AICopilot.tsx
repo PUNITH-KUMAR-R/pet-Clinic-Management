@@ -252,6 +252,56 @@ function parseWorkingHours(scheduleStr: string): { start: string; end: string } 
   return { start: '09:00', end: '17:00' };
 }
 
+function parsePetNameAndSpecies(input: string): { name: string; species: string } {
+  const lower = input.toLowerCase();
+  
+  // 1. Species detection
+  let species = 'Dog';
+  if (lower.includes('cat') || lower.includes('feline') || lower.includes('kitten')) species = 'Cat';
+  else if (lower.includes('bird') || lower.includes('parrot') || lower.includes('canary')) species = 'Bird';
+  else if (lower.includes('rabbit') || lower.includes('bunny')) species = 'Rabbit';
+  else if (lower.includes('dog') || lower.includes('canine') || lower.includes('puppy')) species = 'Dog';
+
+  // 2. Direct pattern matching for name in full sentences
+  // e.g. "The dog's name is Max", "My pet is named Max", "Name is Max", "A dog named Max"
+  const sentencePatterns = [
+    /(?:pet's|dog's|cat's|rabbit's|bird's)\s+name\s+is\s+([a-zA-Z0-9'-]+)/i,
+    /(?:name\s+is|named|called)\s+([a-zA-Z0-9'-]+)/i,
+    /(?:my|the)\s+(?:pet|dog|cat|bird|rabbit|kitten|puppy|bunny)?\s+(?:name\s+is|is)\s+([a-zA-Z0-9'-]+)/i
+  ];
+
+  for (const pattern of sentencePatterns) {
+    const match = input.match(pattern);
+    if (match && match[1]) {
+      const extracted = match[1].trim();
+      const ignore = ['a', 'an', 'the', 'my', 'dog', 'cat', 'bird', 'rabbit', 'pet', 'feline', 'canine', 'puppy', 'kitten', 'bunny'];
+      if (!ignore.includes(extracted.toLowerCase())) {
+        return {
+          name: extracted.charAt(0).toUpperCase() + extracted.slice(1).toLowerCase(),
+          species
+        };
+      }
+    }
+  }
+
+  // 3. Fallback: Strip filler words and species words
+  let parts = input.split(/[,-\/]+/);
+  let rawName = parts[0]?.trim() || input;
+
+  const fillerRegex = /\b(the|my|our|a|an|pet|pets|pet's|dog|dog's|cat|cat's|bird|bird's|rabbit|rabbit's|feline|canine|puppy|kitten|bunny|name|is|called|named|it's|he's|she's|has)\b/gi;
+  let cleaned = rawName.replace(fillerRegex, ' ').replace(/['"’]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // If nothing left or just single species word, default name
+  if (!cleaned || ['cat', 'dog', 'bird', 'rabbit', 'feline', 'canine', 'kitten', 'puppy', 'bunny', 'pet'].includes(cleaned.toLowerCase())) {
+    cleaned = species === 'Cat' ? 'Milo' : species === 'Dog' ? 'Buddy' : species === 'Bird' ? 'Kiwi' : 'Fluffy';
+  } else {
+    // Capitalize words nicely
+    cleaned = cleaned.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }
+
+  return { name: cleaned, species };
+}
+
 function parsePetDetails(input: string, species: string): { breed: string; age: number; weight: number } {
   // 1. Extract Age if specified with units e.g. "3 years", "3 yrs", "3y", "3 y/o", "3 mo"
   let ageVal: number | null = null;
@@ -607,25 +657,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
     else if (type === 'pet') {
       if (step === 0) {
         // Step 0: Name & Species -> Ask Breed, Age, Weight
-        const lower = trimmed.toLowerCase();
-        let species = 'Dog';
-        if (lower.includes('cat') || lower.includes('feline') || lower.includes('kitten')) species = 'Cat';
-        else if (lower.includes('bird') || lower.includes('parrot') || lower.includes('canary')) species = 'Bird';
-        else if (lower.includes('rabbit') || lower.includes('bunny')) species = 'Rabbit';
-        else if (lower.includes('dog') || lower.includes('canine') || lower.includes('puppy')) species = 'Dog';
-
-        // Extract pet name
-        let parts = trimmed.split(/[,-\/]+/);
-        let rawName = parts[0]?.trim() || trimmed;
-
-        // If user typed only species name (e.g. "Cat", "dog", "cat")
-        if (['cat', 'dog', 'bird', 'rabbit', 'feline', 'canine', 'kitten', 'puppy'].includes(rawName.toLowerCase())) {
-          rawName = species === 'Cat' ? 'Milo' : species === 'Dog' ? 'Buddy' : 'Pet';
-        } else {
-          // Clean species word out of name if user wrote e.g. "Luna Cat" or "Luna, Cat"
-          const cleanName = rawName.replace(new RegExp(`\\b(${species}|cat|dog|bird|rabbit|feline|canine)\\b`, 'gi'), '').trim();
-          if (cleanName) rawName = cleanName;
-        }
+        const { name: rawName, species } = parsePetNameAndSpecies(trimmed);
 
         let breedExamples = '';
         let emoji = '🐾';
