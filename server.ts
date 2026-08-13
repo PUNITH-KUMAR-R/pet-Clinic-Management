@@ -488,10 +488,348 @@ function handleRecommendDoctor(symptomsOrQuery: string): string {
   return `👨‍⚕️ **Doctor Recommendation Match**:\n\nBased on your query ("*${symptomsOrQuery}*"), I recommend **${recommendedDoctor.name}** (**${recommendedDoctor.specialty}**).\n\n* **Why this match**: ${recommendedDoctor.name} ${matchReason}\n* **Working Days**: **${recommendedDoctor.workingDays.join(', ')}**\n* **Working Hours**: **${recommendedDoctor.workingHours.start} - ${recommendedDoctor.workingHours.end}**\n\nWould you like me to book an appointment with **${recommendedDoctor.name}**? Just tell me the date and preferred time!`;
 }
 
+function handleDeletePet(petNameOrId: string, speciesFilter?: string): string {
+  const pets = db.getPets();
+  const lower = petNameOrId.toLowerCase();
+
+  let species = (speciesFilter || '').toLowerCase();
+  if (!species) {
+    if (/\b(dog|canine|puppy|dogs)\b/i.test(lower)) species = 'dog';
+    else if (/\b(cat|feline|kitten|cats)\b/i.test(lower)) species = 'cat';
+    else if (/\b(bird|parrot|canary|birds)\b/i.test(lower)) species = 'bird';
+    else if (/\b(rabbit|bunny|rabbits)\b/i.test(lower)) species = 'rabbit';
+  }
+
+  // Clean species and command words out of name search
+  let cleanName = lower
+    .replace(/\b(delete|remove|trash|edit|update|pet|patient|dog|dogs|cat|cats|bird|birds|rabbit|rabbits|feline|canine|puppy|kitten|bunny)\b/gi, '')
+    .trim();
+
+  if (!cleanName) cleanName = lower;
+
+  let candidates = pets.filter(p => 
+    p.id.toLowerCase() === lower || 
+    p.id.toLowerCase() === cleanName ||
+    p.name.toLowerCase() === cleanName ||
+    p.name.toLowerCase().includes(cleanName) || 
+    cleanName.includes(p.name.toLowerCase()) ||
+    p.name.toLowerCase().includes(lower) ||
+    lower.includes(p.name.toLowerCase())
+  );
+
+  if (species && candidates.length > 0) {
+    const speciesMatches = candidates.filter(p => p.type.toLowerCase().includes(species) || species.includes(p.type.toLowerCase()));
+    if (speciesMatches.length > 0) {
+      candidates = speciesMatches;
+    }
+  }
+
+  if (candidates.length === 0) return `❌ Pet matching "${petNameOrId}" not found in database.`;
+
+  if (candidates.length > 1 && !species) {
+    const matchDetails = candidates.map(c => `• **${c.name}** (${c.type} - ${c.breed}, Owner: ${c.ownerName})`).join('\n');
+    return `⚠️ **Multiple pets found named "${candidates[0].name}"**:\n\n${matchDetails}\n\nPlease specify the species, for example: \`delete dog ${candidates[0].name}\` or \`delete cat ${candidates[0].name}\`.`;
+  }
+
+  const pet = candidates[0];
+  db.trashPet(pet.id);
+  return `🗑️ **Pet Deleted Successfully!**\n\nProfile for **${pet.name}** (${pet.type} - ${pet.breed}, Owner: ${pet.ownerName}) has been deleted and moved to Deleted Data / Trash.`;
+}
+
+function handleUpdatePet(args: any): string {
+  const pets = db.getPets();
+  const rawTarget = String(args.petNameOrId || args.name || args.petName || '').toLowerCase();
+  let species = String(args.type || args.species || '').toLowerCase();
+
+  if (!species) {
+    if (/\b(dog|canine|puppy|dogs)\b/i.test(rawTarget)) species = 'dog';
+    else if (/\b(cat|feline|kitten|cats)\b/i.test(rawTarget)) species = 'cat';
+    else if (/\b(bird|parrot|canary|birds)\b/i.test(rawTarget)) species = 'bird';
+    else if (/\b(rabbit|bunny|rabbits)\b/i.test(rawTarget)) species = 'rabbit';
+  }
+
+  let cleanName = rawTarget
+    .replace(/\b(delete|remove|trash|edit|update|pet|patient|dog|dogs|cat|cats|bird|birds|rabbit|rabbits|feline|canine|puppy|kitten|bunny)\b/gi, '')
+    .trim();
+
+  if (!cleanName) cleanName = rawTarget;
+
+  let candidates = pets.filter(p => 
+    p.id.toLowerCase() === rawTarget || 
+    p.id.toLowerCase() === cleanName ||
+    p.name.toLowerCase() === cleanName ||
+    p.name.toLowerCase().includes(cleanName) || 
+    cleanName.includes(p.name.toLowerCase()) ||
+    p.name.toLowerCase().includes(rawTarget) ||
+    rawTarget.includes(p.name.toLowerCase())
+  );
+
+  if (species && candidates.length > 0) {
+    const speciesMatches = candidates.filter(p => p.type.toLowerCase().includes(species) || species.includes(p.type.toLowerCase()));
+    if (speciesMatches.length > 0) {
+      candidates = speciesMatches;
+    }
+  }
+
+  if (candidates.length === 0) return `❌ Pet matching "${rawTarget || 'specified pet'}" not found in database.`;
+
+  if (candidates.length > 1 && !species) {
+    const matchDetails = candidates.map(c => `• **${c.name}** (${c.type} - ${c.breed}, Owner: ${c.ownerName})`).join('\n');
+    return `⚠️ **Multiple pets found named "${candidates[0].name}"**:\n\n${matchDetails}\n\nPlease specify the species, for example: \`edit dog ${candidates[0].name}\` or \`edit cat ${candidates[0].name}\`.`;
+  }
+
+  const pet = candidates[0];
+
+  const updates: Partial<Pet> = {};
+  if (args.newName || args.name) updates.name = args.newName || args.name;
+  if (args.breed) updates.breed = args.breed;
+  if (args.age !== undefined && args.age !== null) updates.age = Number(args.age);
+  if (args.weight !== undefined && args.weight !== null) updates.weight = Number(args.weight);
+  if (args.ownerName) updates.ownerName = args.ownerName;
+  if (args.ownerEmail) updates.ownerEmail = args.ownerEmail;
+  if (args.ownerPhone) updates.ownerPhone = args.ownerPhone;
+  if (args.type && args.type.toLowerCase() !== species) updates.type = args.type;
+
+  const updated = db.updatePet(pet.id, updates);
+  if (!updated) return `❌ Could not update pet profile.`;
+
+  return `✏️ **Pet Profile Updated!**\n\nUpdated record for **${updated.name}**:\n• **Species & Breed:** ${updated.type} - ${updated.breed}\n• **Age & Weight:** ${updated.age} yrs | ${updated.weight} kg\n• **Owner:** ${updated.ownerName} (\`${updated.ownerEmail}\` | ${updated.ownerPhone})`;
+}
+
+function handleDeleteDoctor(doctorNameOrId: string): string {
+  const doctors = db.getDoctors();
+  const lower = doctorNameOrId.toLowerCase();
+  const doc = doctors.find(d => d.id.toLowerCase() === lower || d.name.toLowerCase().includes(lower) || lower.includes(d.name.toLowerCase()));
+  if (!doc) return `❌ Doctor matching "${doctorNameOrId}" not found in database.`;
+
+  db.trashDoctor(doc.id);
+  return `🗑️ **Doctor Removed!**\n\nProfile for **${doc.name}** (${doc.specialty}) has been removed and moved to Trash. Any active appointments for ${doc.name} have been marked as Cancelled.`;
+}
+
+function handleUpdateDoctor(args: any): string {
+  const doctors = db.getDoctors();
+  const target = String(args.doctorNameOrId || args.name || args.doctorName || '').toLowerCase();
+  const doc = doctors.find(d => d.id.toLowerCase() === target || d.name.toLowerCase().includes(target) || target.includes(d.name.toLowerCase()));
+  if (!doc) return `❌ Doctor matching "${target || 'specified doctor'}" not found in database.`;
+
+  const updates: Partial<Doctor> = {};
+  if (args.newName) updates.name = args.newName;
+  if (args.specialty) updates.specialty = args.specialty;
+  if (args.email) updates.email = args.email;
+  if (args.phone) updates.phone = args.phone;
+  if (args.bio) updates.bio = args.bio;
+  if (args.workingDays && Array.isArray(args.workingDays)) updates.workingDays = args.workingDays;
+  if (args.workingHours) updates.workingHours = args.workingHours;
+
+  const updated = db.updateDoctor(doc.id, updates);
+  if (!updated) return `❌ Could not update doctor profile.`;
+
+  return `✏️ **Doctor Profile Updated!**\n\nUpdated profile for **${updated.name}**:\n• **Specialty:** ${updated.specialty}\n• **Email & Phone:** \`${updated.email}\` | ${updated.phone}\n• **Working Days:** ${updated.workingDays.join(', ')}`;
+}
+
+function handleCancelAppointment(args: any): string {
+  const appointments = db.getAppointments().filter(a => a.status === 'Scheduled');
+  const pets = db.getPets();
+  const doctors = db.getDoctors();
+
+  let targetApt: Appointment | undefined;
+
+  if (args.appointmentId) {
+    targetApt = appointments.find(a => a.id === args.appointmentId);
+  } else {
+    const searchPet = String(args.petNameOrId || args.petName || '').toLowerCase();
+    const searchDoc = String(args.doctorNameOrId || args.doctorName || '').toLowerCase();
+    const searchDate = args.date;
+
+    targetApt = appointments.find(a => {
+      const pet = pets.find(p => p.id === a.petId);
+      const doc = doctors.find(d => d.id === a.doctorId);
+
+      const petMatch = searchPet ? (pet && (pet.name.toLowerCase().includes(searchPet) || searchPet.includes(pet.name.toLowerCase()))) : true;
+      const docMatch = searchDoc ? (doc && (doc.name.toLowerCase().includes(searchDoc) || searchDoc.includes(doc.name.toLowerCase()))) : true;
+      const dateMatch = searchDate ? a.date === searchDate : true;
+
+      return petMatch && docMatch && dateMatch;
+    });
+  }
+
+  if (!targetApt) return `❌ No active scheduled appointment found matching your request.`;
+
+  db.trashAppointment(targetApt.id);
+  const pet = pets.find(p => p.id === targetApt?.petId);
+  const doc = doctors.find(d => d.id === targetApt?.doctorId);
+
+  return `🗑️ **Appointment Cancelled & Deleted!**\n\nCancelled appointment for **${pet?.name || 'Patient'}** with **${doc?.name || 'Doctor'}** on **${targetApt.date} at ${targetApt.time}**. Moved to Deleted Data / Trash.`;
+}
+
+function handleUpdateAppointment(args: any): string {
+  const appointments = db.getAppointments();
+  const pets = db.getPets();
+  const doctors = db.getDoctors();
+
+  let targetApt: Appointment | undefined;
+
+  if (args.appointmentId) {
+    targetApt = appointments.find(a => a.id === args.appointmentId);
+  } else {
+    const searchPet = String(args.petNameOrId || args.petName || '').toLowerCase();
+    targetApt = appointments.find(a => {
+      const pet = pets.find(p => p.id === a.petId);
+      return searchPet && pet && (pet.name.toLowerCase().includes(searchPet) || searchPet.includes(pet.name.toLowerCase()));
+    }) || appointments[0];
+  }
+
+  if (!targetApt) return `❌ Appointment record not found.`;
+
+  const updates: Partial<Appointment> = {};
+  if (args.date) updates.date = args.date;
+  if (args.time) updates.time = args.time;
+  if (args.reason) updates.reason = args.reason;
+  if (args.status) updates.status = args.status;
+
+  const updated = db.updateAppointment(targetApt.id, updates);
+  if (!updated) return `❌ Could not update appointment.`;
+
+  const pet = pets.find(p => p.id === updated.petId);
+  const doc = doctors.find(d => d.id === updated.doctorId);
+
+  return `✏️ **Appointment Rescheduled / Updated!**\n\nUpdated appointment details:\n• **Patient:** ${pet?.name || 'Pet'}\n• **Attending Doctor:** ${doc?.name || 'Doctor'}\n• **New Date & Time:** ${updated.date} at ${updated.time}\n• **Reason:** ${updated.reason}\n• **Status:** ${updated.status}`;
+}
+
 function simulateResponse(userText: string): string {
   const query = userText.toLowerCase();
 
-  // 1. Register Doctor
+  // 1. Delete Commands
+  if (query.includes('delete') || query.includes('remove') || query.includes('trash')) {
+    if (query.includes('doctor') || query.includes('vet') || query.includes('dr.')) {
+      const nameMatch = userText.match(/(?:doctor|dr\.|vet)\s+([A-Za-z\s]+)/i) || userText.match(/(?:delete|remove|trash)\s+(?:doctor|dr\.|vet)?\s*([A-Za-z\s]+)/i);
+      const targetName = nameMatch ? nameMatch[1].trim() : userText.replace(/delete|remove|trash|doctor|dr\.|vet/gi, '').trim();
+      return handleDeleteDoctor(targetName);
+    }
+    
+    if (query.includes('appointment') || query.includes('visit')) {
+      const pets = db.getPets();
+      let matchedPetName = '';
+      for (const p of pets) {
+        if (query.includes(p.name.toLowerCase())) {
+          matchedPetName = p.name;
+          break;
+        }
+      }
+      const dateMatch = userText.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      return handleCancelAppointment({
+        petNameOrId: matchedPetName,
+        date: dateMatch ? dateMatch[1] : undefined
+      });
+    }
+
+    // Default delete target is Pet / Patient
+    let species = '';
+    if (/\bdog\b/i.test(query)) species = 'Dog';
+    else if (/\bcat\b/i.test(query)) species = 'Cat';
+    else if (/\bbird\b/i.test(query)) species = 'Bird';
+    else if (/\brabbit\b/i.test(query)) species = 'Rabbit';
+
+    const nameMatch = userText.match(/(?:pet|patient|dog|cat|bird|rabbit|named|name)\s+([A-Za-z0-9'-]+)/i) || userText.match(/(?:delete|remove|trash)\s+(?:pet|patient|dog|cat|bird|rabbit)?\s*([A-Za-z0-9'-]+)/i);
+    const targetName = nameMatch ? nameMatch[1] : userText.replace(/delete|remove|trash|pet|patient|dog|cat|bird|rabbit/gi, '').trim();
+    return handleDeletePet(targetName, species);
+  }
+
+  // 2. Update / Edit Commands
+  if (query.includes('update') || query.includes('edit') || query.includes('change') || query.includes('reschedule')) {
+    if (query.includes('doctor') || query.includes('vet') || query.includes('dr.')) {
+      const doctors = db.getDoctors();
+      let matchedDoc = doctors[0];
+      for (const d of doctors) {
+        if (query.includes(d.name.toLowerCase())) {
+          matchedDoc = d;
+          break;
+        }
+      }
+
+      const specMatch = userText.match(/(?:specialty|specializing in)\s+([A-Za-z\s]+?)(?:,|\.|\s+email|$)/i);
+      const emailMatch = userText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+      const phoneMatch = userText.match(/(?:phone|call|tel)\s*[:\s]*([0-9-]{7,15})/i);
+
+      return handleUpdateDoctor({
+        doctorNameOrId: matchedDoc.name,
+        specialty: specMatch ? specMatch[1].trim() : undefined,
+        email: emailMatch ? emailMatch[1] : undefined,
+        phone: phoneMatch ? phoneMatch[1] : undefined
+      });
+    }
+
+    if (query.includes('appointment') || query.includes('visit')) {
+      const pets = db.getPets();
+      let matchedPetName = '';
+      for (const p of pets) {
+        if (query.includes(p.name.toLowerCase())) {
+          matchedPetName = p.name;
+          break;
+        }
+      }
+
+      const dateMatch = userText.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      const timeMatch = userText.match(/\b(\d{1,2}:\d{2})\b/);
+
+      return handleUpdateAppointment({
+        petNameOrId: matchedPetName,
+        date: dateMatch ? dateMatch[1] : undefined,
+        time: timeMatch ? timeMatch[1] : undefined
+      });
+    }
+
+    // Default update target is Pet / Patient
+    const pets = db.getPets();
+    let matchedPetName = '';
+    for (const p of pets) {
+      if (query.includes(p.name.toLowerCase())) {
+        matchedPetName = p.name;
+        break;
+      }
+    }
+
+    let species = '';
+    if (/\bdog\b/i.test(query)) species = 'Dog';
+    else if (/\bcat\b/i.test(query)) species = 'Cat';
+    else if (/\bbird\b/i.test(query)) species = 'Bird';
+    else if (/\brabbit\b/i.test(query)) species = 'Rabbit';
+
+    // Flexible age matching (e.g. age 3, age to 3, 3 yrs, 3 years old, 3yo)
+    const ageMatch = userText.match(/\bage\s*(?:is|to|=|:)?\s*(\d+(?:\.\d+)?)\b/i) || userText.match(/\b(\d+(?:\.\d+)?)\s*(?:years?|yrs?|y\/?o|yo|y)\b/i);
+
+    // Flexible weight matching (e.g. weight 5, weight to 5, 5 kg, 5 kgs, 5 lbs)
+    const weightMatch = userText.match(/\bweight\s*(?:is|to|=|:)?\s*(\d+(?:\.\d+)?)\b/i) || userText.match(/\b(\d+(?:\.\d+)?)\s*(?:kgs?|kilo|kilos|lbs?|pounds?)\b/i);
+
+    // Breed matching (e.g. breed Persian, breed to Persian, is a Persian)
+    const breedMatch = userText.match(/\bbreed\s*(?:is|to|=|:)?\s*([A-Za-z\s]+?)(?:,|\.|\s+age|\s+weight|\s+owner|\s+email|$)/i) || userText.match(/(?:breed|is a)\s+([A-Za-z\s]+?)(?:,|\.|\s+age|\s+weight|$)/i);
+
+    // Email matching
+    const emailMatch = userText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+
+    // Owner name matching (e.g. owner John, owner to John, owner name John)
+    const ownerNameMatch = userText.match(/\bowner(?:\s*name)?\s*(?:is|to|=|:)?\s*([A-Za-z\s]+?)(?:,|\.|\s+email|\s+phone|\s+age|\s+weight|$)/i);
+
+    // Phone matching (e.g. phone 555-0199, call 555-0199)
+    const phoneMatch = userText.match(/(?:phone|call|tel)\s*(?:is|to|=|:)?\s*([0-9-]{7,15})/i);
+
+    // New name matching (e.g. rename to Lunita, new name Lunita)
+    const newNameMatch = userText.match(/\b(?:new name|rename to|name to)\s*([A-Za-z0-9'-]+)\b/i);
+
+    return handleUpdatePet({
+      petNameOrId: matchedPetName || userText,
+      species,
+      breed: breedMatch ? breedMatch[1].trim() : undefined,
+      age: ageMatch ? Number(ageMatch[1]) : undefined,
+      weight: weightMatch ? Number(weightMatch[1]) : undefined,
+      ownerEmail: emailMatch ? emailMatch[1] : undefined,
+      ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : undefined,
+      ownerPhone: phoneMatch ? phoneMatch[1] : undefined,
+      newName: newNameMatch ? newNameMatch[1].trim() : undefined
+    });
+  }
+
+  // 7. Register Doctor
   if (
     query.includes('register doctor') || 
     query.includes('add doctor') || 
@@ -736,9 +1074,99 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       }
     };
 
+    const deletePetDeclaration = {
+      name: 'delete_pet',
+      description: 'Delete a pet record from the database and move it to trash. If multiple pets share the same name, specify the species or type (e.g. Dog, Cat).',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          petNameOrId: { type: 'STRING' as any, description: 'Pet name or ID to delete' },
+          species: { type: 'STRING' as any, description: 'Species or pet category e.g. Dog, Cat, Bird, Rabbit' }
+        },
+        required: ['petNameOrId']
+      }
+    };
+
+    const updatePetDeclaration = {
+      name: 'update_pet',
+      description: 'Update or edit details of an existing pet in the database.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          petNameOrId: { type: 'STRING' as any, description: 'Existing pet name or ID to update' },
+          newName: { type: 'STRING' as any, description: 'New pet name' },
+          type: { type: 'STRING' as any, description: 'Species e.g. Dog, Cat, Bird' },
+          breed: { type: 'STRING' as any, description: 'Breed name' },
+          age: { type: 'NUMBER' as any, description: 'Age in years' },
+          weight: { type: 'NUMBER' as any, description: 'Weight in kg' },
+          ownerName: { type: 'STRING' as any, description: 'Owner full name' },
+          ownerEmail: { type: 'STRING' as any, description: 'Owner email address' },
+          ownerPhone: { type: 'STRING' as any, description: 'Owner phone number' }
+        },
+        required: ['petNameOrId']
+      }
+    };
+
+    const deleteDoctorDeclaration = {
+      name: 'delete_doctor',
+      description: 'Delete/remove a doctor from the clinic staff roster.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          doctorNameOrId: { type: 'STRING' as any, description: 'Doctor name or ID to delete' }
+        },
+        required: ['doctorNameOrId']
+      }
+    };
+
+    const updateDoctorDeclaration = {
+      name: 'update_doctor',
+      description: 'Update or edit details of an existing doctor profile.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          doctorNameOrId: { type: 'STRING' as any, description: 'Doctor name or ID to update' },
+          newName: { type: 'STRING' as any, description: 'Updated doctor name' },
+          specialty: { type: 'STRING' as any, description: 'Updated specialty' },
+          email: { type: 'STRING' as any, description: 'Updated email address' },
+          phone: { type: 'STRING' as any, description: 'Updated phone number' }
+        },
+        required: ['doctorNameOrId']
+      }
+    };
+
+    const cancelAppointmentDeclaration = {
+      name: 'cancel_appointment',
+      description: 'Cancel or delete a scheduled appointment.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          petNameOrId: { type: 'STRING' as any, description: 'Pet name or ID' },
+          doctorNameOrId: { type: 'STRING' as any, description: 'Doctor name or ID' },
+          date: { type: 'STRING' as any, description: 'Appointment date YYYY-MM-DD' },
+          appointmentId: { type: 'STRING' as any, description: 'Specific appointment ID if known' }
+        }
+      }
+    };
+
+    const updateAppointmentDeclaration = {
+      name: 'update_appointment',
+      description: 'Reschedule or edit a scheduled appointment.',
+      parameters: {
+        type: 'OBJECT' as any,
+        properties: {
+          appointmentId: { type: 'STRING' as any, description: 'Appointment ID' },
+          petNameOrId: { type: 'STRING' as any, description: 'Pet name or ID' },
+          date: { type: 'STRING' as any, description: 'New date YYYY-MM-DD' },
+          time: { type: 'STRING' as any, description: 'New time HH:MM' },
+          reason: { type: 'STRING' as any, description: 'New reason for visit' }
+        }
+      }
+    };
+
     const context = `
 You are the "AI Practice Assistant" for Pet Clinic Management.
-You have direct tool access to perform real-time registration and scheduling actions on the database.
+You have direct tool access to perform real-time CRUD (Create, Read, Update, Delete) actions on the clinic database.
 
 Current Clinic State:
 Doctors Available:
@@ -754,8 +1182,14 @@ Instructions:
 1. When user requests to register a doctor, call "register_doctor".
 2. When user requests to register a pet, call "register_pet".
 3. When user requests to schedule/book an appointment, call "schedule_appointment".
-4. When user asks which doctor to visit for specific symptoms or needs, call "recommend_doctor" or directly match their symptoms to the doctor's specialty.
-5. Provide clear, structured, friendly responses with Markdown formatting.
+4. When user asks to delete a pet, call "delete_pet".
+5. When user asks to edit/update a pet, call "update_pet".
+6. When user asks to delete a doctor, call "delete_doctor".
+7. When user asks to edit/update a doctor, call "update_doctor".
+8. When user asks to cancel/delete an appointment, call "cancel_appointment".
+9. When user asks to reschedule/edit an appointment, call "update_appointment".
+10. When user asks which doctor to visit for symptoms, call "recommend_doctor".
+11. Provide clear, structured, friendly responses with Markdown formatting.
 `;
 
     // Map conversation messages to Gemini contents format
@@ -800,7 +1234,20 @@ Instructions:
       contents: finalContents,
       config: {
         systemInstruction: context,
-        tools: [{ functionDeclarations: [registerDoctorDeclaration, registerPetDeclaration, scheduleAppointmentDeclaration, recommendDoctorDeclaration] }]
+        tools: [{
+          functionDeclarations: [
+            registerDoctorDeclaration,
+            registerPetDeclaration,
+            scheduleAppointmentDeclaration,
+            recommendDoctorDeclaration,
+            deletePetDeclaration,
+            updatePetDeclaration,
+            deleteDoctorDeclaration,
+            updateDoctorDeclaration,
+            cancelAppointmentDeclaration,
+            updateAppointmentDeclaration
+          ]
+        }]
       }
     });
 
@@ -826,6 +1273,21 @@ Instructions:
           const queryStr = String((call.args as any)?.query || '');
           const rec = handleRecommendDoctor(queryStr);
           actionSummaries.push(rec);
+        } else if (call.name === 'delete_pet') {
+          const petTarget = String((call.args as any)?.petNameOrId || '');
+          const species = String((call.args as any)?.species || (call.args as any)?.type || '');
+          actionSummaries.push(handleDeletePet(petTarget, species));
+        } else if (call.name === 'update_pet') {
+          actionSummaries.push(handleUpdatePet(call.args));
+        } else if (call.name === 'delete_doctor') {
+          const docTarget = String((call.args as any)?.doctorNameOrId || '');
+          actionSummaries.push(handleDeleteDoctor(docTarget));
+        } else if (call.name === 'update_doctor') {
+          actionSummaries.push(handleUpdateDoctor(call.args));
+        } else if (call.name === 'cancel_appointment') {
+          actionSummaries.push(handleCancelAppointment(call.args));
+        } else if (call.name === 'update_appointment') {
+          actionSummaries.push(handleUpdateAppointment(call.args));
         }
       }
 
