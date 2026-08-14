@@ -161,7 +161,7 @@ export function detectSecrets(): { findings: LeakedSecretFinding[]; totalFiles: 
         }
 
         // High-entropy token detection on variable assignments
-        const assignmentMatch = line.match(/(?:token|secret|key|hash)\s*[:=]\s*['"`]([A-Za-z0-9_\-]{28,})['"`]/i);
+        const assignmentMatch = line.match(/(?:token|secret|key|hash)\s*[:=]\s*['"`]([A-Za-z0-9_-]{28,})['"`]/i);
         if (assignmentMatch) {
           const candidate = assignmentMatch[1];
           const entropy = calculateShannonEntropy(candidate);
