@@ -12,7 +12,10 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+// Security Hardening: Disable x-powered-by header to prevent server fingerprinting
+app.disable('x-powered-by');
+
+app.use(express.json({ limit: '5mb' }));
 
 // Helper to determine day of week from YYYY-MM-DD without timezone offset issues
 function getDayName(dateString: string): string {
@@ -1253,7 +1256,7 @@ Instructions:
 
     const functionCalls = response.functionCalls;
     if (functionCalls && functionCalls.length > 0) {
-      let actionSummaries: string[] = [];
+      const actionSummaries: string[] = [];
 
       for (const call of functionCalls) {
         if (call.name === 'register_doctor') {

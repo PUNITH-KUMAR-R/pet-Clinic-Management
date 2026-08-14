@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, Send, Bot, User, RefreshCw, RotateCcw, 
-  UserPlus, Calendar, Mail, Phone, Stethoscope, 
-  Check, CheckCircle2, ShieldCheck, XCircle, ChevronRight, HelpCircle
+  UserPlus, Calendar, Stethoscope, 
+  ShieldCheck, XCircle
 } from 'lucide-react';
 import { CoPilotMessage, Pet, Doctor, Appointment } from '../types';
 
@@ -285,8 +285,8 @@ function parsePetNameAndSpecies(input: string): { name: string; species: string 
   }
 
   // 3. Fallback: Strip filler words and species words
-  let parts = input.split(/[,-\/]+/);
-  let rawName = parts[0]?.trim() || input;
+  const parts = input.split(/[,\-/]+/);
+  const rawName = parts[0]?.trim() || input;
 
   const fillerRegex = /\b(the|my|our|a|an|pet|pets|pet's|dog|dog's|cat|cat's|bird|bird's|rabbit|rabbit's|feline|canine|puppy|kitten|bunny|name|is|called|named|it's|he's|she's|has)\b/gi;
   let cleaned = rawName.replace(fillerRegex, ' ').replace(/['"’]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -343,7 +343,7 @@ function parsePetDetails(input: string, species: string, petName?: string): { br
   }
 
   // 4. Look for unparsed numbers if age or weight still missing
-  let cleanRemaining = remaining.replace(/[,-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let cleanRemaining = remaining.replace(/[,\-/]+/g, ' ').replace(/\s+/g, ' ').trim();
   const unparsedNumbers = cleanRemaining.match(/\b\d+(?:\.\d+)?\b/g);
 
   if (unparsedNumbers) {
@@ -374,8 +374,8 @@ function parsePetDetails(input: string, species: string, petName?: string): { br
     petName.toLowerCase().split(/\s+/).forEach(w => fillerWords.add(w));
   }
 
-  let cleanWords = cleanRemaining
-    .replace(/[,-\/]/g, ' ')
+  const cleanWords = cleanRemaining
+    .replace(/[,\-/]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
@@ -454,7 +454,9 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
     setActiveWizard(null);
     try {
       localStorage.removeItem('vetcore_copilot_messages');
-    } catch (e) {}
+    } catch {
+      // ignore storage error
+    }
   };
 
   const cancelWizard = () => {
@@ -1196,7 +1198,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
                     return (
                       <div key={idx} className="flex items-start space-x-1.5 my-0.5">
                         <span className="text-teal-500 font-bold">•</span>
-                        <span>{trimmed.replace(/^[•\*]\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1')}</span>
+                        <span>{trimmed.replace(/^[•*]\s+/, '').replace(/\*\*(.*?)\*\*/g, '$1')}</span>
                       </div>
                     );
                   }

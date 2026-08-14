@@ -534,7 +534,7 @@ export class DatabaseManager {
     const item = trashItems.find(t => t.id === trashId);
 
     const updated = trashItems.filter(t => t.id !== trashId);
-    let removedFromTrash = updated.length !== trashItems.length;
+    const removedFromTrash = updated.length !== trashItems.length;
     if (removedFromTrash) {
       this.saveTrash(updated);
     }
