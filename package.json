@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "sast": "tsx scripts/sast-scanner.ts"
+    "sast": "tsx scripts/sast-scanner.ts",
+    "scan:secrets": "tsx scripts/detect-secrets.ts",
+    "security:all": "npm run sast && npm run scan:secrets"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

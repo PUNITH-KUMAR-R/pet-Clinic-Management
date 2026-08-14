@@ -46,7 +46,7 @@ cp .env.example .env
 
 Open the newly created `.env` file and replace the placeholder with your actual key from [Google AI Studio](https://aistudio.google.com/):
 ```env
-GEMINI_API_KEY="AIzaSyYourActualKeyGoesHere"
+GEMINI_API_KEY="your_gemini_api_key_here"
 APP_URL="http://localhost:3000"
 ```
 

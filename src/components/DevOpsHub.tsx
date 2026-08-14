@@ -58,7 +58,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres_password@db:5432/pet_clinic
+      - DATABASE_URL=postgresql://\${POSTGRES_USER:-postgres}:\${POSTGRES_PASSWORD:-changeme}@db:5432/\${POSTGRES_DB:-pet_clinic}
       - GEMINI_API_KEY=\${GEMINI_API_KEY}
     depends_on:
       db:
@@ -78,9 +78,9 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres_password
-      - POSTGRES_DB=pet_clinic
+      - POSTGRES_USER=\${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=\${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_DB=\${POSTGRES_DB:-pet_clinic}
     ports:
       - "5432:5432"
     volumes:
