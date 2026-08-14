@@ -166,7 +166,7 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
   }
 ];
 
-class DatabaseManager {
+export class DatabaseManager {
   private cache: ClinicDatabase | null = null;
 
   constructor() {
