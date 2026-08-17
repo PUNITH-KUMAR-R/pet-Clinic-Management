@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import fs from 'fs';
 import { DatabaseManager } from '../db';
 import { Pet, Doctor, Appointment } from '../types';
 
@@ -418,6 +419,105 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
 
       db.emptyTrash();
       expect(db.readTrash().length).toBe(0);
+    });
+
+    it('should cover direct permanent deletion when items exist in main tables and cancel doctor appointments', () => {
+      const doc = db.addDoctor({
+        name: 'Dr. Direct Del',
+        specialty: 'Surgery',
+        email: 'direct@vetcore.com',
+        phone: '555-9999',
+        bio: 'Surgeon',
+        avatar: '',
+        workingDays: ['Monday'],
+        workingHours: { start: '09:00', end: '17:00' }
+      });
+      const pet = db.addPet({
+        name: 'Pet Direct Del',
+        type: 'Dog',
+        breed: 'Lab',
+        age: 3,
+        weight: 20,
+        ownerName: 'Owner Direct',
+        ownerEmail: 'directowner@example.com',
+        ownerPhone: '555-8888',
+        medicalRecords: []
+      });
+      const apt = db.addAppointment({
+        petId: pet.id,
+        doctorId: doc.id,
+        date: '2026-10-10',
+        time: '14:00',
+        reason: 'Direct deletion test',
+        status: 'Scheduled'
+      });
+
+      // Delete doctor directly from main db (without trashing first)
+      const docDeleted = db.deleteDoctor(doc.id);
+      expect(docDeleted).toBe(true);
+      const updatedApt = db.getAppointments().find(a => a.id === apt.id);
+      expect(updatedApt?.status).toBe('Cancelled');
+
+      // Delete pet directly from main db (without trashing first)
+      const petDeleted = db.deletePet(pet.id);
+      expect(petDeleted).toBe(true);
+      const aptAfterPetDel = db.getAppointments().find(a => a.id === apt.id);
+      expect(aptAfterPetDel).toBeUndefined();
+
+      // Add appointment and delete directly
+      const newApt = db.addAppointment({
+        petId: 'some-pet',
+        doctorId: 'some-doc',
+        date: '2026-10-11',
+        time: '15:00',
+        reason: 'Direct apt del',
+        status: 'Scheduled'
+      });
+      const aptDeleted = db.deleteAppointment(newApt.id);
+      expect(aptDeleted).toBe(true);
+    });
+
+    it('should test edge cases and file error handling fallback', () => {
+      // Test when cache exists
+      const readResult = db.read();
+      expect(readResult).toBeDefined();
+
+      // Test update doctor with non-existent ID
+      expect(db.updateDoctor('non-existent-doc-id', { name: 'Nobody' })).toBeNull();
+
+      // Test delete of non-existent entity
+      expect(db.deleteDoctor('non-existent-doc-999')).toBe(false);
+      expect(db.deletePet('non-existent-pet-999')).toBe(false);
+      expect(db.deleteAppointment('non-existent-apt-999')).toBe(false);
+
+      // Test read error fallback with and without cache
+      const originalReadFile = fs.readFileSync;
+      const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementationOnce(() => {
+        throw new Error('Simulated read error');
+      });
+      const fallbackWithCache = db.read();
+      expect(fallbackWithCache).toBeDefined();
+      readSpy.mockRestore();
+
+      // Test save error fallback
+      const saveSpy = vi.spyOn(fs, 'writeFileSync').mockImplementationOnce(() => {
+        throw new Error('Simulated write error');
+      });
+      expect(() => db.save(readResult)).not.toThrow();
+      saveSpy.mockRestore();
+
+      // Test trash error fallbacks
+      const trashReadSpy = vi.spyOn(fs, 'readFileSync').mockImplementationOnce(() => {
+        throw new Error('Simulated trash read error');
+      });
+      expect(db.readTrash()).toEqual([]);
+      trashReadSpy.mockRestore();
+
+      const trashSaveSpy = vi.spyOn(fs, 'writeFileSync').mockImplementationOnce(() => {
+        throw new Error('Simulated trash save error');
+      });
+      expect(() => db.saveTrash([])).not.toThrow();
+      trashSaveSpy.mockRestore();
     });
   });
 });
