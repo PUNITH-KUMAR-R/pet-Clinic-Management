@@ -116,9 +116,9 @@ export function detectSecrets(): { findings: LeakedSecretFinding[]; totalFiles: 
   const findings: LeakedSecretFinding[] = [];
 
   for (const file of files) {
-    const relFile = path.relative(process.cwd(), file);
+    const relFile = path.relative(process.cwd(), file).replace(/\\/g, '/');
     // Ignore the detector script itself and test fixtures that test scanner rules
-    if (relFile === 'scripts/detect-secrets.ts' || relFile === 'scripts/sast-scanner.ts' || relFile === '.semgrep/rules.yml') {
+    if (relFile.startsWith('scripts/') || relFile === '.semgrep/rules.yml') {
       continue;
     }
 

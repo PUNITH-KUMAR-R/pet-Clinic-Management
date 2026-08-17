@@ -63,8 +63,8 @@ export function runSASTScan(): { findings: ScanFinding[]; scannedFiles: number }
   const findings: ScanFinding[] = [];
 
   for (const file of files) {
-    const relFile = path.relative(process.cwd(), file);
-    if (relFile.includes('__tests__') || relFile.includes('scripts/')) continue;
+    const relFile = path.relative(process.cwd(), file).replace(/\\/g, '/');
+    if (relFile.includes('__tests__') || relFile.startsWith('scripts/') || relFile === '.semgrep/rules.yml') continue;
 
     const content = fs.readFileSync(file, 'utf8');
     const lines = content.split('\n');

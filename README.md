@@ -130,6 +130,63 @@ docker-compose down
 
 ---
 
+## ⚡ Method D: Unified Automation with Makefile (start | stop | restart | scan | publish | release)
+
+A comprehensive, production-ready `Makefile` is included at the root of the repository to streamline your development, scanning, testing, and deployment workflows.
+
+### 📋 List All Available Commands
+To view the interactive command cheat sheet:
+```bash
+make help
+# or simply
+make
+```
+
+---
+
+### 🚀 1. Application Lifecycle (`start` | `stop` | `restart`)
+
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **Start Application** | `make start` | Auto-copies `.env.example` if needed, builds container, and boots app in background at `http://localhost:3000`. |
+| **Start Dev Mode** | `make start-dev` | Boots local interactive development server (`npm run dev` with tsx live-reload). |
+| **Stop Application** | `make stop` | Gracefully stops and cleans up active Docker Compose containers & standalone processes. |
+| **Restart Application** | `make restart` | Issues a clean `stop` followed by a fresh `start` with rebuild. |
+| **Check Health / Status** | `make status` | Inspects running Docker containers and pings `/api/health`. |
+| **View Live Logs** | `make logs` | Streams real-time Docker container stdout/stderr logs. |
+
+---
+
+### 🛡️ 2. Security, Quality & Code Scans (`scan`)
+
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **Run All Scans** | `make scan` | Executes all 3 security gates in sequence: SAST + Secret Leaks + ESLint / Type validation. |
+| **SAST Security Scan** | `make scan-sast` | Runs Semgrep static analysis (`npm run sast`) for OWASP Top 10 vulnerabilities. |
+| **Secret Leak Scan** | `make scan-secrets` | Runs Gitleaks & TruffleHog Shannon entropy analysis (`npm run scan:secrets`). |
+| **Code Lint & Types** | `make scan-lint` | Runs ESLint and TypeScript compiler type-checking (`tsc --noEmit`). |
+| **Run Unit Tests** | `make test` | Executes Vitest test suite (`npm run test`). |
+| **Full Coverage Test** | `make test-coverage` | Runs unit tests with Istanbul/v8 code coverage table (`npm run test:coverage`). |
+
+---
+
+### 📦 3. Publish & Release Workflow (`publish` | `release`)
+
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **Build Artifacts** | `make build` | Compiles Vite frontend, esbuild server bundle, and tags Docker image (`vetcore-ai-clinic:latest`). |
+| **Publish Image** | `make publish` | Validates security (`scan`), runs tests, builds container, and pushes image to your container registry (e.g. `docker.io` or `ghcr.io`). |
+| **Create Release** | `make release` | Performs pre-release security validation, verifies clean git working tree, bumps version, and generates a Git release tag (`v1.0.0`). |
+| **Clean Workspace** | `make clean` | Removes `dist/`, test coverage outputs, and cache directories. |
+
+> **💡 Note for Windows Users without `make` installed:**
+> You can also run the matching npm scripts directly:
+> - `npm run docker:start` / `npm run docker:stop` / `npm run docker:restart`
+> - `npm run scan:all` (runs SAST + Secrets + Linting + Tests in one pass)
+> - `npm run security:all`
+
+---
+
 ## 🔒 Part 3: Comprehensive Testing, Quality & Security Suites (4 Core Tests)
 
 This repository includes 4 complete testing, quality assurance, and security scanning suites configured with standalone CLI scripts, VS Code tools, and automated GitHub Actions CI/CD workflows.
