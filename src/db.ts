@@ -130,6 +130,27 @@ const INITIAL_PETS: Pet[] = [
         vetName: 'Dr. Sarah Jenkins'
       }
     ]
+  },
+  {
+    id: 'pet-4',
+    name: 'Milo',
+    type: 'Dog',
+    breed: 'French Bulldog',
+    age: 4,
+    weight: 12.0,
+    ownerName: 'Emma Watson',
+    ownerEmail: 'emma.watson@gmail.com',
+    ownerPhone: '555-0204',
+    medicalRecords: [
+      {
+        id: 'rec-5',
+        date: '2026-03-12',
+        diagnosis: 'Routine Dental Scaling',
+        treatment: 'Ultrasonic teeth cleaning and polish completed under light sedation.',
+        notes: 'Gums healthy, no extractions necessary.',
+        vetName: 'Dr. Marcus Vance'
+      }
+    ]
   }
 ];
 
@@ -163,6 +184,16 @@ const INITIAL_APPOINTMENTS: Appointment[] = [
     reason: 'Routine beak trimming',
     status: 'Scheduled',
     notes: 'Rocky is a bit anxious during handling'
+  },
+  {
+    id: 'apt-4',
+    petId: 'pet-4',
+    doctorId: 'doc-3',
+    date: '2026-08-13',
+    time: '11:00',
+    reason: 'Allergy consultation & ear check',
+    status: 'Scheduled',
+    notes: 'Seasonal itching observed in spring'
   }
 ];
 

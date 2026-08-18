@@ -63,6 +63,7 @@ export interface CoPilotMessage {
   interactiveType?: 'doctor-reg' | 'pet-reg' | 'appointment-reg' | 'patient-portal-lookup';
   formSubmitted?: boolean;
   submittedData?: any;
+  attachedImage?: string; // base64 data URL for uploaded images in chat
 }
 
 export interface TrashItem {
@@ -71,5 +72,19 @@ export interface TrashItem {
   deletedAt: string;
   itemName: string;
   data: Doctor | Pet | Appointment;
+}
+
+export interface VisionDiagnosisResult {
+  conditionName: string;
+  confidence: 'High' | 'Moderate' | 'Low';
+  urgency: 'Low / Routine' | 'Moderate / Prompt Attention' | 'High / Urgent Emergency';
+  summary: string;
+  possibleCauses: string[];
+  symptomsObserved: string[];
+  recommendedActions: string[];
+  thingsToAvoid: string[];
+  recommendedSpecialty: 'General Medicine' | 'Surgery' | 'Dermatology' | 'Dentistry' | 'Cardiology' | 'Behavioral';
+  suggestedDoctorName?: string;
+  disclaimer: string;
 }
 

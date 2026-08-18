@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download, Trash2 } from 'lucide-react';
+import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download, Trash2, Sparkles } from 'lucide-react';
 import DoctorsManager from './components/DoctorsManager';
 import PetsManager from './components/PetsManager';
 import AppointmentsManager from './components/AppointmentsManager';
@@ -497,6 +497,7 @@ export default function App() {
                   pets={pets}
                   doctors={doctors}
                   appointments={appointments}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
                 />
               </div>
               
