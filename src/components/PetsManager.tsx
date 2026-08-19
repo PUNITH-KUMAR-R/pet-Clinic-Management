@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, ShieldAlert, FileText, Search, User, Mail, Phone, Calendar, Heart, ShieldPlus, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
-import { Pet, MedicalRecord, Doctor } from '../types';
+import { Pet, Doctor } from '../types';
 import DeleteConfirmModal from './DeleteConfirmModal';
 
 interface PetsManagerProps {
@@ -103,7 +103,7 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
       } else {
         setError(data.error || 'Failed to save pet profile.');
       }
-    } catch (err) {
+    } catch {
       setError('Connection failure. Try again.');
     }
   };
@@ -123,7 +123,7 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
       } else {
         setError(data.error || 'Failed to delete pet profile.');
       }
-    } catch (err) {
+    } catch {
       setError('Connection failure.');
     } finally {
       setIsDeleting(false);
@@ -143,7 +143,7 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
       } else {
         setError(data.error || 'Failed to move pet profile to trash.');
       }
-    } catch (err) {
+    } catch {
       setError('Connection failure.');
     } finally {
       setIsDeleting(false);
@@ -177,7 +177,7 @@ export default function PetsManager({ pets, doctors, onRefresh }: PetsManagerPro
         const data = await response.json();
         setError(data.error || 'Failed to save medical record.');
       }
-    } catch (err) {
+    } catch {
       setError('Connection failure.');
     }
   };

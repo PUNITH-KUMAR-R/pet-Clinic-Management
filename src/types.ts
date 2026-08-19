@@ -62,7 +62,7 @@ export interface CoPilotMessage {
   timestamp: string;
   interactiveType?: 'doctor-reg' | 'pet-reg' | 'appointment-reg' | 'patient-portal-lookup';
   formSubmitted?: boolean;
-  submittedData?: any;
+  submittedData?: Record<string, unknown>;
   attachedImage?: string; // base64 data URL for uploaded images in chat
 }
 

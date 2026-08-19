@@ -1,9 +1,9 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
-import { Doctor, Pet, Appointment, MedicalRecord } from './src/types';
+import { Doctor, Pet, Appointment } from './src/types';
 import { db } from './src/db';
 
 // Load environment variables
@@ -352,38 +352,38 @@ app.delete('/api/trash', (req, res) => {
 // ------------------------------------
 // AI Co-Pilot Handlers & Simulation Logic
 // ------------------------------------
-function handleRegisterDoctor(args: any): Doctor {
+function handleRegisterDoctor(args: Record<string, unknown>): Doctor {
   const isFemale = args.gender === 'Female' || (args.gender && String(args.gender).toLowerCase().includes('female'));
   const defaultAvatar = isFemale 
     ? 'https://images.unsplash.com/photo-1594824813566-78a08c8e1e7f?auto=format&fit=crop&q=80&w=300'
     : 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300';
 
   const newDoc = db.addDoctor({
-    name: args.name || args.doctorName || 'Dr. New Doctor',
-    gender: args.gender || 'Male',
-    specialty: args.specialty || 'General Medicine',
-    email: args.email || `dr.${(args.name || 'doctor').toLowerCase().replace(/[^a-z0-9]/g, '')}@petclinic.com`,
-    phone: args.phone || '555-0190',
-    bio: args.bio || `Veterinary practitioner specializing in ${args.specialty || 'General Medicine'}.`,
-    avatar: args.avatar || defaultAvatar,
+    name: String(args.name || args.doctorName || 'Dr. New Doctor'),
+    gender: (args.gender as 'Male' | 'Female' | 'Other') || 'Male',
+    specialty: (args.specialty as Doctor['specialty']) || 'General Medicine',
+    email: String(args.email || `dr.${String(args.name || 'doctor').toLowerCase().replace(/[^a-z0-9]/g, '')}@petclinic.com`),
+    phone: String(args.phone || '555-0190'),
+    bio: String(args.bio || `Veterinary practitioner specializing in ${String(args.specialty || 'General Medicine')}.`),
+    avatar: String(args.avatar || defaultAvatar),
     workingDays: Array.isArray(args.workingDays) && args.workingDays.length > 0 
-      ? args.workingDays 
+      ? (args.workingDays as string[]) 
       : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    workingHours: args.workingHours || { start: '09:00', end: '17:00' }
+    workingHours: (args.workingHours as { start: string; end: string }) || { start: '09:00', end: '17:00' }
   });
   return newDoc;
 }
 
-function handleRegisterPet(args: any): Pet {
+function handleRegisterPet(args: Record<string, unknown>): Pet {
   const newPet = db.addPet({
-    name: args.name || args.petName || 'New Patient',
-    type: args.type || args.petType || 'Dog',
-    breed: args.breed || 'Mixed Breed',
+    name: String(args.name || args.petName || 'New Patient'),
+    type: (args.type as Pet['type']) || (args.petType as Pet['type']) || 'Dog',
+    breed: String(args.breed || 'Mixed Breed'),
     age: Number(args.age) || 2,
     weight: Number(args.weight) || 10,
-    ownerName: args.ownerName || 'Registered Owner',
-    ownerEmail: args.ownerEmail || 'patient@example.com',
-    ownerPhone: args.ownerPhone || '555-0199',
+    ownerName: String(args.ownerName || 'Registered Owner'),
+    ownerEmail: String(args.ownerEmail || 'patient@example.com'),
+    ownerPhone: String(args.ownerPhone || '555-0199'),
     medicalRecords: [
       {
         id: `rec-${Date.now()}`,
@@ -398,19 +398,22 @@ function handleRegisterPet(args: any): Pet {
   return newPet;
 }
 
-function handleScheduleAppointment(args: any): { success: boolean; appointment?: Appointment; error?: string } {
+function handleScheduleAppointment(args: Record<string, unknown>): { success: boolean; appointment?: Appointment; error?: string } {
   const pets = db.getPets();
   const doctors = db.getDoctors();
 
-  const pet = pets.find(p => p.id === args.petId || p.name.toLowerCase() === (args.petName || '').toLowerCase()) || pets[0];
-  const doctor = doctors.find(d => d.id === args.doctorId || d.name.toLowerCase().includes((args.doctorName || '').toLowerCase())) || doctors[0];
+  const searchPetName = String(args.petName || '').toLowerCase();
+  const searchDocName = String(args.doctorName || '').toLowerCase();
+
+  const pet = pets.find(p => p.id === args.petId || (searchPetName && p.name.toLowerCase() === searchPetName)) || pets[0];
+  const doctor = doctors.find(d => d.id === args.doctorId || (searchDocName && d.name.toLowerCase().includes(searchDocName))) || doctors[0];
 
   if (!pet) return { success: false, error: 'No pet record found. Please register the pet first.' };
   if (!doctor) return { success: false, error: 'Doctor not found.' };
 
-  const date = args.date || new Date().toISOString().split('T')[0];
-  const time = args.time || '10:00';
-  const reason = args.reason || 'General health consultation';
+  const date = String(args.date || new Date().toISOString().split('T')[0]);
+  const time = String(args.time || '10:00');
+  const reason = String(args.reason || 'General health consultation');
 
   // Check working day
   const dayName = getDayName(date);
@@ -449,7 +452,7 @@ function handleScheduleAppointment(args: any): { success: boolean; appointment?:
     time,
     reason,
     status: 'Scheduled',
-    notes: args.notes || 'Booked via AI Practice Assistant'
+    notes: String(args.notes || 'Booked via AI Practice Assistant')
   });
 
   return { success: true, appointment: newApt };
@@ -539,7 +542,7 @@ function handleDeletePet(petNameOrId: string, speciesFilter?: string): string {
   return `🗑️ **Pet Deleted Successfully!**\n\nProfile for **${pet.name}** (${pet.type} - ${pet.breed}, Owner: ${pet.ownerName}) has been deleted and moved to Deleted Data / Trash.`;
 }
 
-function handleUpdatePet(args: any): string {
+function handleUpdatePet(args: Record<string, unknown>): string {
   const pets = db.getPets();
   const rawTarget = String(args.petNameOrId || args.name || args.petName || '').toLowerCase();
   let species = String(args.type || args.species || '').toLowerCase();
@@ -584,14 +587,14 @@ function handleUpdatePet(args: any): string {
   const pet = candidates[0];
 
   const updates: Partial<Pet> = {};
-  if (args.newName || args.name) updates.name = args.newName || args.name;
-  if (args.breed) updates.breed = args.breed;
+  if (args.newName || args.name) updates.name = String(args.newName || args.name);
+  if (args.breed) updates.breed = String(args.breed);
   if (args.age !== undefined && args.age !== null) updates.age = Number(args.age);
   if (args.weight !== undefined && args.weight !== null) updates.weight = Number(args.weight);
-  if (args.ownerName) updates.ownerName = args.ownerName;
-  if (args.ownerEmail) updates.ownerEmail = args.ownerEmail;
-  if (args.ownerPhone) updates.ownerPhone = args.ownerPhone;
-  if (args.type && args.type.toLowerCase() !== species) updates.type = args.type;
+  if (args.ownerName) updates.ownerName = String(args.ownerName);
+  if (args.ownerEmail) updates.ownerEmail = String(args.ownerEmail);
+  if (args.ownerPhone) updates.ownerPhone = String(args.ownerPhone);
+  if (args.type && String(args.type).toLowerCase() !== species) updates.type = args.type as Pet['type'];
 
   const updated = db.updatePet(pet.id, updates);
   if (!updated) return `❌ Could not update pet profile.`;
@@ -609,20 +612,20 @@ function handleDeleteDoctor(doctorNameOrId: string): string {
   return `🗑️ **Doctor Removed!**\n\nProfile for **${doc.name}** (${doc.specialty}) has been removed and moved to Trash. Any active appointments for ${doc.name} have been marked as Cancelled.`;
 }
 
-function handleUpdateDoctor(args: any): string {
+function handleUpdateDoctor(args: Record<string, unknown>): string {
   const doctors = db.getDoctors();
   const target = String(args.doctorNameOrId || args.name || args.doctorName || '').toLowerCase();
   const doc = doctors.find(d => d.id.toLowerCase() === target || d.name.toLowerCase().includes(target) || target.includes(d.name.toLowerCase()));
   if (!doc) return `❌ Doctor matching "${target || 'specified doctor'}" not found in database.`;
 
   const updates: Partial<Doctor> = {};
-  if (args.newName) updates.name = args.newName;
-  if (args.specialty) updates.specialty = args.specialty;
-  if (args.email) updates.email = args.email;
-  if (args.phone) updates.phone = args.phone;
-  if (args.bio) updates.bio = args.bio;
-  if (args.workingDays && Array.isArray(args.workingDays)) updates.workingDays = args.workingDays;
-  if (args.workingHours) updates.workingHours = args.workingHours;
+  if (args.newName) updates.name = String(args.newName);
+  if (args.specialty) updates.specialty = args.specialty as Doctor['specialty'];
+  if (args.email) updates.email = String(args.email);
+  if (args.phone) updates.phone = String(args.phone);
+  if (args.bio) updates.bio = String(args.bio);
+  if (args.workingDays && Array.isArray(args.workingDays)) updates.workingDays = args.workingDays as string[];
+  if (args.workingHours) updates.workingHours = args.workingHours as { start: string; end: string };
 
   const updated = db.updateDoctor(doc.id, updates);
   if (!updated) return `❌ Could not update doctor profile.`;
@@ -630,7 +633,7 @@ function handleUpdateDoctor(args: any): string {
   return `✏️ **Doctor Profile Updated!**\n\nUpdated profile for **${updated.name}**:\n• **Specialty:** ${updated.specialty}\n• **Email & Phone:** \`${updated.email}\` | ${updated.phone}\n• **Working Days:** ${updated.workingDays.join(', ')}`;
 }
 
-function handleCancelAppointment(args: any): string {
+function handleCancelAppointment(args: Record<string, unknown>): string {
   const appointments = db.getAppointments().filter(a => a.status === 'Scheduled');
   const pets = db.getPets();
   const doctors = db.getDoctors();
@@ -665,7 +668,7 @@ function handleCancelAppointment(args: any): string {
   return `🗑️ **Appointment Cancelled & Deleted!**\n\nCancelled appointment for **${pet?.name || 'Patient'}** with **${doc?.name || 'Doctor'}** on **${targetApt.date} at ${targetApt.time}**. Moved to Deleted Data / Trash.`;
 }
 
-function handleUpdateAppointment(args: any): string {
+function handleUpdateAppointment(args: Record<string, unknown>): string {
   const appointments = db.getAppointments();
   const pets = db.getPets();
   const doctors = db.getDoctors();
@@ -685,10 +688,10 @@ function handleUpdateAppointment(args: any): string {
   if (!targetApt) return `❌ Appointment record not found.`;
 
   const updates: Partial<Appointment> = {};
-  if (args.date) updates.date = args.date;
-  if (args.time) updates.time = args.time;
-  if (args.reason) updates.reason = args.reason;
-  if (args.status) updates.status = args.status;
+  if (args.date) updates.date = String(args.date);
+  if (args.time) updates.time = String(args.time);
+  if (args.reason) updates.reason = String(args.reason);
+  if (args.status) updates.status = args.status as 'Scheduled' | 'Completed' | 'Cancelled';
 
   const updated = db.updateAppointment(targetApt.id, updates);
   if (!updated) return `❌ Could not update appointment.`;
@@ -1018,13 +1021,13 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'register_doctor',
       description: 'Register a new veterinary doctor into the clinic database.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          name: { type: 'STRING' as any, description: 'Doctor full name (e.g. Dr. Sarah Jenkins)' },
-          specialty: { type: 'STRING' as any, description: 'Medical specialty (e.g. General Medicine, Surgery, Dermatology, Dentistry, Cardiology)' },
-          email: { type: 'STRING' as any, description: 'Doctor email address' },
-          phone: { type: 'STRING' as any, description: 'Phone contact number' },
-          bio: { type: 'STRING' as any, description: 'Brief professional bio or background' }
+          name: { type: Type.STRING, description: 'Doctor full name (e.g. Dr. Sarah Jenkins)' },
+          specialty: { type: Type.STRING, description: 'Medical specialty (e.g. General Medicine, Surgery, Dermatology, Dentistry, Cardiology)' },
+          email: { type: Type.STRING, description: 'Doctor email address' },
+          phone: { type: Type.STRING, description: 'Phone contact number' },
+          bio: { type: Type.STRING, description: 'Brief professional bio or background' }
         },
         required: ['name', 'specialty']
       }
@@ -1034,16 +1037,16 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'register_pet',
       description: 'Register a new pet / patient in the clinic database so it appears in the Pets list and Patient Portal.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          name: { type: 'STRING' as any, description: 'Pet name (e.g. Max, Bella, Luna)' },
-          type: { type: 'STRING' as any, description: 'Species/Category (e.g. Dog, Cat, Bird, Rabbit)' },
-          breed: { type: 'STRING' as any, description: 'Pet breed (e.g. Golden Retriever, Siamese, Mixed)' },
-          age: { type: 'NUMBER' as any, description: 'Pet age in years' },
-          weight: { type: 'NUMBER' as any, description: 'Pet weight in kg' },
-          ownerName: { type: 'STRING' as any, description: 'Full name of owner' },
-          ownerEmail: { type: 'STRING' as any, description: 'Email address of owner' },
-          ownerPhone: { type: 'STRING' as any, description: 'Phone number of owner' }
+          name: { type: Type.STRING, description: 'Pet name (e.g. Max, Bella, Luna)' },
+          type: { type: Type.STRING, description: 'Species/Category (e.g. Dog, Cat, Bird, Rabbit)' },
+          breed: { type: Type.STRING, description: 'Pet breed (e.g. Golden Retriever, Siamese, Mixed)' },
+          age: { type: Type.NUMBER, description: 'Pet age in years' },
+          weight: { type: Type.NUMBER, description: 'Pet weight in kg' },
+          ownerName: { type: Type.STRING, description: 'Full name of owner' },
+          ownerEmail: { type: Type.STRING, description: 'Email address of owner' },
+          ownerPhone: { type: Type.STRING, description: 'Phone number of owner' }
         },
         required: ['name', 'type', 'ownerName']
       }
@@ -1053,13 +1056,13 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'schedule_appointment',
       description: 'Schedule an appointment for a registered pet with a doctor.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          petName: { type: 'STRING' as any, description: 'Name of the pet' },
-          doctorName: { type: 'STRING' as any, description: 'Name of the doctor' },
-          date: { type: 'STRING' as any, description: 'Appointment date YYYY-MM-DD' },
-          time: { type: 'STRING' as any, description: 'Time in HH:MM format' },
-          reason: { type: 'STRING' as any, description: 'Reason for visit' }
+          petName: { type: Type.STRING, description: 'Name of the pet' },
+          doctorName: { type: Type.STRING, description: 'Name of the doctor' },
+          date: { type: Type.STRING, description: 'Appointment date YYYY-MM-DD' },
+          time: { type: Type.STRING, description: 'Time in HH:MM format' },
+          reason: { type: Type.STRING, description: 'Reason for visit' }
         },
         required: ['petName', 'doctorName', 'date', 'time']
       }
@@ -1069,9 +1072,9 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'recommend_doctor',
       description: 'Analyze patient symptoms or query to recommend the most suitable doctor specialist.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          query: { type: 'STRING' as any, description: 'Symptoms or patient query' }
+          query: { type: Type.STRING, description: 'Symptoms or patient query' }
         },
         required: ['query']
       }
@@ -1081,10 +1084,10 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'delete_pet',
       description: 'Delete a pet record from the database and move it to trash. If multiple pets share the same name, specify the species or type (e.g. Dog, Cat).',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          petNameOrId: { type: 'STRING' as any, description: 'Pet name or ID to delete' },
-          species: { type: 'STRING' as any, description: 'Species or pet category e.g. Dog, Cat, Bird, Rabbit' }
+          petNameOrId: { type: Type.STRING, description: 'Pet name or ID to delete' },
+          species: { type: Type.STRING, description: 'Species or pet category e.g. Dog, Cat, Bird, Rabbit' }
         },
         required: ['petNameOrId']
       }
@@ -1094,17 +1097,17 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'update_pet',
       description: 'Update or edit details of an existing pet in the database.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          petNameOrId: { type: 'STRING' as any, description: 'Existing pet name or ID to update' },
-          newName: { type: 'STRING' as any, description: 'New pet name' },
-          type: { type: 'STRING' as any, description: 'Species e.g. Dog, Cat, Bird' },
-          breed: { type: 'STRING' as any, description: 'Breed name' },
-          age: { type: 'NUMBER' as any, description: 'Age in years' },
-          weight: { type: 'NUMBER' as any, description: 'Weight in kg' },
-          ownerName: { type: 'STRING' as any, description: 'Owner full name' },
-          ownerEmail: { type: 'STRING' as any, description: 'Owner email address' },
-          ownerPhone: { type: 'STRING' as any, description: 'Owner phone number' }
+          petNameOrId: { type: Type.STRING, description: 'Existing pet name or ID to update' },
+          newName: { type: Type.STRING, description: 'New pet name' },
+          type: { type: Type.STRING, description: 'Species e.g. Dog, Cat, Bird' },
+          breed: { type: Type.STRING, description: 'Breed name' },
+          age: { type: Type.NUMBER, description: 'Age in years' },
+          weight: { type: Type.NUMBER, description: 'Weight in kg' },
+          ownerName: { type: Type.STRING, description: 'Owner full name' },
+          ownerEmail: { type: Type.STRING, description: 'Owner email address' },
+          ownerPhone: { type: Type.STRING, description: 'Owner phone number' }
         },
         required: ['petNameOrId']
       }
@@ -1114,9 +1117,9 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'delete_doctor',
       description: 'Delete/remove a doctor from the clinic staff roster.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          doctorNameOrId: { type: 'STRING' as any, description: 'Doctor name or ID to delete' }
+          doctorNameOrId: { type: Type.STRING, description: 'Doctor name or ID to delete' }
         },
         required: ['doctorNameOrId']
       }
@@ -1126,13 +1129,13 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'update_doctor',
       description: 'Update or edit details of an existing doctor profile.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          doctorNameOrId: { type: 'STRING' as any, description: 'Doctor name or ID to update' },
-          newName: { type: 'STRING' as any, description: 'Updated doctor name' },
-          specialty: { type: 'STRING' as any, description: 'Updated specialty' },
-          email: { type: 'STRING' as any, description: 'Updated email address' },
-          phone: { type: 'STRING' as any, description: 'Updated phone number' }
+          doctorNameOrId: { type: Type.STRING, description: 'Doctor name or ID to update' },
+          newName: { type: Type.STRING, description: 'Updated doctor name' },
+          specialty: { type: Type.STRING, description: 'Updated specialty' },
+          email: { type: Type.STRING, description: 'Updated email address' },
+          phone: { type: Type.STRING, description: 'Updated phone number' }
         },
         required: ['doctorNameOrId']
       }
@@ -1142,12 +1145,12 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'cancel_appointment',
       description: 'Cancel or delete a scheduled appointment.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          petNameOrId: { type: 'STRING' as any, description: 'Pet name or ID' },
-          doctorNameOrId: { type: 'STRING' as any, description: 'Doctor name or ID' },
-          date: { type: 'STRING' as any, description: 'Appointment date YYYY-MM-DD' },
-          appointmentId: { type: 'STRING' as any, description: 'Specific appointment ID if known' }
+          petNameOrId: { type: Type.STRING, description: 'Pet name or ID' },
+          doctorNameOrId: { type: Type.STRING, description: 'Doctor name or ID' },
+          date: { type: Type.STRING, description: 'Appointment date YYYY-MM-DD' },
+          appointmentId: { type: Type.STRING, description: 'Specific appointment ID if known' }
         }
       }
     };
@@ -1156,13 +1159,13 @@ app.post('/api/gemini/co-pilot', async (req, res) => {
       name: 'update_appointment',
       description: 'Reschedule or edit a scheduled appointment.',
       parameters: {
-        type: 'OBJECT' as any,
+        type: Type.OBJECT,
         properties: {
-          appointmentId: { type: 'STRING' as any, description: 'Appointment ID' },
-          petNameOrId: { type: 'STRING' as any, description: 'Pet name or ID' },
-          date: { type: 'STRING' as any, description: 'New date YYYY-MM-DD' },
-          time: { type: 'STRING' as any, description: 'New time HH:MM' },
-          reason: { type: 'STRING' as any, description: 'New reason for visit' }
+          appointmentId: { type: Type.STRING, description: 'Appointment ID' },
+          petNameOrId: { type: Type.STRING, description: 'Pet name or ID' },
+          date: { type: Type.STRING, description: 'New date YYYY-MM-DD' },
+          time: { type: Type.STRING, description: 'New time HH:MM' },
+          reason: { type: Type.STRING, description: 'New reason for visit' }
         }
       }
     };
@@ -1203,8 +1206,14 @@ Instructions:
 `;
 
     // Map conversation messages to Gemini contents format (including multi-modal images)
-    const mapped = messages.map((m: any) => {
-      const parts: any[] = [];
+    interface IncomingChatMessage {
+      role: string;
+      content?: string;
+      attachedImage?: string;
+    }
+
+    const mapped = (messages as IncomingChatMessage[]).map((m) => {
+      const parts: Array<{ text?: string; inlineData?: { data: string; mimeType: string } }> = [];
       if (m.attachedImage) {
         const cleanBase64 = m.attachedImage.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
         const mimeMatch = m.attachedImage.match(/^data:(image\/[a-zA-Z+]+);base64,/);
@@ -1256,7 +1265,7 @@ Instructions:
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
+      model: 'gemini-2.5-flash',
       contents: finalContents,
       config: {
         systemInstruction: context,
@@ -1282,38 +1291,39 @@ Instructions:
       const actionSummaries: string[] = [];
 
       for (const call of functionCalls) {
+        const callArgs = (call.args || {}) as Record<string, unknown>;
         if (call.name === 'register_doctor') {
-          const doc = handleRegisterDoctor(call.args);
+          const doc = handleRegisterDoctor(callArgs);
           actionSummaries.push(`👨‍⚕️ **Registered New Doctor**: **${doc.name}** (*${doc.specialty}*). Added to live clinic database!`);
         } else if (call.name === 'register_pet') {
-          const registered = handleRegisterPet(call.args);
+          const registered = handleRegisterPet(callArgs);
           actionSummaries.push(`🎉 **Registered New Pet**: **${registered.name}** (${registered.breed}, Owner: ${registered.ownerName}). Added to live database!`);
         } else if (call.name === 'schedule_appointment') {
-          const result = handleScheduleAppointment(call.args);
+          const result = handleScheduleAppointment(callArgs);
           if (result.success && result.appointment) {
             actionSummaries.push(`📅 **Scheduled Appointment**: Date: **${result.appointment.date}** at **${result.appointment.time}** (Reason: *${result.appointment.reason}*).`);
           } else {
             actionSummaries.push(`⚠️ **Scheduling Issue**: ${result.error || 'Could not schedule appointment.'}`);
           }
         } else if (call.name === 'recommend_doctor') {
-          const queryStr = String((call.args as any)?.query || '');
+          const queryStr = String(callArgs.query || '');
           const rec = handleRecommendDoctor(queryStr);
           actionSummaries.push(rec);
         } else if (call.name === 'delete_pet') {
-          const petTarget = String((call.args as any)?.petNameOrId || '');
-          const species = String((call.args as any)?.species || (call.args as any)?.type || '');
+          const petTarget = String(callArgs.petNameOrId || '');
+          const species = String(callArgs.species || callArgs.type || '');
           actionSummaries.push(handleDeletePet(petTarget, species));
         } else if (call.name === 'update_pet') {
-          actionSummaries.push(handleUpdatePet(call.args));
+          actionSummaries.push(handleUpdatePet(callArgs));
         } else if (call.name === 'delete_doctor') {
-          const docTarget = String((call.args as any)?.doctorNameOrId || '');
+          const docTarget = String(callArgs.doctorNameOrId || '');
           actionSummaries.push(handleDeleteDoctor(docTarget));
         } else if (call.name === 'update_doctor') {
-          actionSummaries.push(handleUpdateDoctor(call.args));
+          actionSummaries.push(handleUpdateDoctor(callArgs));
         } else if (call.name === 'cancel_appointment') {
-          actionSummaries.push(handleCancelAppointment(call.args));
+          actionSummaries.push(handleCancelAppointment(callArgs));
         } else if (call.name === 'update_appointment') {
-          actionSummaries.push(handleUpdateAppointment(call.args));
+          actionSummaries.push(handleUpdateAppointment(callArgs));
         }
       }
 
@@ -1329,16 +1339,17 @@ Instructions:
       content: response.text || 'I could not generate a response at this moment. Please try again.'
     });
 
-  } catch (error: any) {
-    const isApiKeyError = error?.status === 400 || 
-      error?.message?.includes('API key not valid') || 
-      error?.message?.includes('API_KEY_INVALID') ||
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string };
+    const isApiKeyError = err?.status === 400 || 
+      err?.message?.includes('API key not valid') || 
+      err?.message?.includes('API_KEY_INVALID') ||
       JSON.stringify(error || {}).includes('API_KEY_INVALID');
 
     if (isApiKeyError) {
       console.warn('Gemini API Key is invalid or expired. Falling back seamlessly to built-in smart AI Co-Pilot simulator.');
     } else {
-      console.error('Gemini API Error:', error?.message || error);
+      console.error('Gemini API Error:', err?.message || error);
     }
 
     const lastUserMessage = messages[messages.length - 1]?.content || '';
@@ -1531,8 +1542,9 @@ You MUST respond strictly with a valid JSON object matching the following struct
 
     res.json(parsed);
 
-  } catch (error: any) {
-    console.error('Gemini Vision Diagnosis Error:', error?.message || error);
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error('Gemini Vision Diagnosis Error:', err?.message || error);
     // Graceful fallback to rich simulated report
     return res.json(getSimulatedDiagnosis());
   }

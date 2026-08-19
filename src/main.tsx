@@ -5,9 +5,9 @@ import './index.css';
 
 // Silence benign Vite HMR websocket connection errors and unhandled rejections
 if (typeof window !== 'undefined') {
-  const isWebSocketError = (err: any) => {
+  const isWebSocketError = (err: unknown) => {
     if (!err) return false;
-    const msg = typeof err === 'string' ? err : (err.message || '');
+    const msg = typeof err === 'string' ? err : (err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : '');
     return (
       msg.includes('WebSocket') ||
       msg.includes('websocket') ||

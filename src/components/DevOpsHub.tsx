@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Terminal, Shield, Cloud, Server, Code, FileCode, CheckCircle, HelpCircle, Layers, Cpu } from 'lucide-react';
+import { Terminal, Shield, Cloud, Server, Code, FileCode, CheckCircle, Layers, Cpu } from 'lucide-react';
 
 export default function DevOpsHub() {
   const [activeTab, setActiveTab] = useState<'docker' | 'testing' | 'gcp' | 'scale'>('docker');

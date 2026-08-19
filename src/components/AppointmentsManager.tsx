@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Edit2, Trash2, Heart, AlertCircle, Sparkles, Check, CheckCircle2, XCircle, Trash } from 'lucide-react';
+import { Calendar, Clock, Edit2, AlertCircle, Sparkles, Check, CheckCircle2, Trash } from 'lucide-react';
 import { Appointment, Pet, Doctor } from '../types';
 import DeleteConfirmModal from './DeleteConfirmModal';
 
@@ -91,7 +91,7 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
         // Here we catch automated validation and double-booking blocks from the Express API!
         setError(data.error || 'Failed to book appointment.');
       }
-    } catch (err) {
+    } catch {
       setError('Unable to reach backend services. Try again.');
     }
   };
@@ -111,7 +111,7 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
         const data = await response.json();
         setError(data.error || 'Failed to delete appointment.');
       }
-    } catch (err) {
+    } catch {
       setError('Unable to reach backend services.');
     } finally {
       setIsDeleting(false);
@@ -131,7 +131,7 @@ export default function AppointmentsManager({ appointments, pets, doctors, onRef
         const data = await response.json();
         setError(data.error || 'Failed to move appointment to trash.');
       }
-    } catch (err) {
+    } catch {
       setError('Unable to reach backend services.');
     } finally {
       setIsDeleting(false);

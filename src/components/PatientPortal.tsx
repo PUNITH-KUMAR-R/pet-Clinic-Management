@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
-import { Search, ShieldCheck, Mail, Heart, Calendar, Clock, FileText, Printer, Check, Eye, BookOpen, ExternalLink, ChevronRight, X } from 'lucide-react';
+import { ShieldCheck, Mail, Heart, Calendar, Clock, FileText, Printer, Eye } from 'lucide-react';
 import { Pet, Appointment, Doctor } from '../types';
 
 interface PatientPortalProps {
   pets: Pet[];
   appointments: Appointment[];
   doctors: Doctor[];
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
-export default function PatientPortal({ pets, appointments, doctors, onRefresh }: PatientPortalProps) {
+export default function PatientPortal({ pets, appointments, doctors }: PatientPortalProps) {
   const [authEmail, setAuthEmail] = useState('');
   const [authenticatedPet, setAuthenticatedPet] = useState<Pet | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (!authEmail.trim()) {
       setError('Please enter a registered email address.');
@@ -32,7 +30,6 @@ export default function PatientPortal({ pets, appointments, doctors, onRefresh }
 
     if (foundPet) {
       setAuthenticatedPet(foundPet);
-      setSuccess(`Authentication successful! Welcome, ${foundPet.ownerName}.`);
     } else {
       setError('No patient record found matching this email. Try "john.doe@gmail.com" or "alice.smith@yahoo.com"!');
     }
@@ -42,7 +39,6 @@ export default function PatientPortal({ pets, appointments, doctors, onRefresh }
     setAuthenticatedPet(null);
     setAuthEmail('');
     setError(null);
-    setSuccess(null);
   };
 
   const myAppointments = authenticatedPet

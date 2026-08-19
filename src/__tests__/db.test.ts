@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'fs';
 import { DatabaseManager } from '../db';
-import { Pet, Doctor, Appointment } from '../types';
+import type { Pet, Doctor, Appointment } from '../types';
 
 describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
   let db: DatabaseManager;
@@ -272,7 +272,7 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
       expect(trashed).toBe(true);
 
       const trash = db.readTrash();
-      const trashItem = trash.find(t => t.itemType === 'pet' && (t.data as any).id === pet.id);
+      const trashItem = trash.find(t => t.itemType === 'pet' && (t.data as Pet).id === pet.id);
       expect(trashItem).toBeDefined();
 
       if (trashItem) {
@@ -299,7 +299,7 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
       expect(trashed).toBe(true);
 
       const trash = db.readTrash();
-      const trashItem = trash.find(t => t.itemType === 'doctor' && (t.data as any).id === doc.id);
+      const trashItem = trash.find(t => t.itemType === 'doctor' && (t.data as Doctor).id === doc.id);
       expect(trashItem).toBeDefined();
 
       if (trashItem) {
@@ -323,7 +323,7 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
       expect(trashed).toBe(true);
 
       const trash = db.readTrash();
-      const trashItem = trash.find(t => t.itemType === 'appointment' && (t.data as any).id === apt.id);
+      const trashItem = trash.find(t => t.itemType === 'appointment' && (t.data as Appointment).id === apt.id);
       expect(trashItem).toBeDefined();
 
       if (trashItem) {
@@ -373,9 +373,9 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
       db.trashAppointment(apt.id);
 
       const trash = db.readTrash();
-      const petTrash = trash.find(t => t.itemType === 'pet' && (t.data as any).id === pet.id);
-      const docTrash = trash.find(t => t.itemType === 'doctor' && (t.data as any).id === doc.id);
-      const aptTrash = trash.find(t => t.itemType === 'appointment' && (t.data as any).id === apt.id);
+      const petTrash = trash.find(t => t.itemType === 'pet' && (t.data as Pet).id === pet.id);
+      const docTrash = trash.find(t => t.itemType === 'doctor' && (t.data as Doctor).id === doc.id);
+      const aptTrash = trash.find(t => t.itemType === 'appointment' && (t.data as Appointment).id === apt.id);
 
       expect(petTrash).toBeDefined();
       expect(docTrash).toBeDefined();
@@ -491,7 +491,6 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
       expect(db.deleteAppointment('non-existent-apt-999')).toBe(false);
 
       // Test read error fallback with and without cache
-      const originalReadFile = fs.readFileSync;
       const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementationOnce(() => {
         throw new Error('Simulated read error');
       });

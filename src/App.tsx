@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download, Trash2, Sparkles } from 'lucide-react';
+import { Calendar, Heart, ShieldAlert, Terminal, Menu, Activity, ClipboardList, Layers, Bell, CheckCircle, X, Sun, Moon, Download, Trash2 } from 'lucide-react';
 import DoctorsManager from './components/DoctorsManager';
 import PetsManager from './components/PetsManager';
 import AppointmentsManager from './components/AppointmentsManager';
@@ -120,8 +120,9 @@ export default function App() {
       setDoctors(docsData);
       setPets(petsData);
       setAppointments(aptsData);
-    } catch (err: any) {
-      setError(err.message || 'Unable to connect to the backend server.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unable to connect to the backend server.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -292,17 +293,17 @@ export default function App() {
                 { id: 'appointments', label: 'Visits & Scheduling', icon: Calendar },
                 { id: 'pets', label: 'Pets & Patients', icon: Heart },
                 { id: 'doctors', label: 'Veterinary Staff', icon: ClipboardList },
-                { id: 'portal', label: 'Patient Portal', icon: Layers },
-                { id: 'notifications', label: 'Notifications', icon: Bell },
-                { id: 'trash', label: 'Deleted Data / Trash', icon: Trash2 },
-                { id: 'devops', label: 'DevOps & Scale Hub', icon: Terminal },
+                { id: 'portal' as const, label: 'Patient Portal', icon: Layers },
+                { id: 'notifications' as const, label: 'Notifications', icon: Bell },
+                { id: 'trash' as const, label: 'Deleted Data / Trash', icon: Trash2 },
+                { id: 'devops' as const, label: 'DevOps & Scale Hub', icon: Terminal },
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => {
-                      setActiveTab(tab.id as any);
+                      setActiveTab(tab.id);
                       setIsMobileSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all ${

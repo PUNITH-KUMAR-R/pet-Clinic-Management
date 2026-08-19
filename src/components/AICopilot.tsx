@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, Send, Bot, User, RefreshCw, RotateCcw, 
   UserPlus, Calendar, Stethoscope, 
-  ShieldCheck, XCircle, Camera, Image, X, UploadCloud, AlertCircle
+  ShieldCheck, XCircle, Camera, X, UploadCloud
 } from 'lucide-react';
 import { CoPilotMessage, Pet, Doctor, Appointment } from '../types';
 
@@ -14,10 +14,45 @@ interface AICopilotProps {
   onNavigateTab?: (tab: 'appointments' | 'pets' | 'doctors' | 'portal' | 'devops' | 'notifications' | 'trash') => void;
 }
 
+interface DoctorWizardData {
+  name?: string;
+  gender?: 'Male' | 'Female';
+  specialty?: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+  schedule?: string;
+}
+
+interface PetWizardData {
+  name?: string;
+  type?: string;
+  breed?: string;
+  breedInfo?: string;
+  age?: number;
+  weight?: number;
+  ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
+}
+
+interface AppointmentWizardData {
+  petId?: string;
+  petName?: string;
+  doctorId?: string;
+  doctorName?: string;
+  date?: string;
+  time?: string;
+  rawDateTime?: string;
+  reason?: string;
+}
+
+type WizardData = DoctorWizardData | PetWizardData | AppointmentWizardData | Record<string, unknown>;
+
 interface ActiveWizardState {
   type: 'doctor' | 'pet' | 'appointment' | 'patient-portal';
   step: number;
-  data: Record<string, any>;
+  data: WizardData;
 }
 
 const DEFAULT_INITIAL_MESSAGE: CoPilotMessage = {
@@ -499,6 +534,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
         setInput(`Diagnose ${species}: ${notes}`);
       });
   };
+  void loadSampleCaseInChat;
 
   // Ensure any previous conversation stored in localStorage is cleared on app startup/reload
   useEffect(() => {
@@ -703,11 +739,12 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
           } else {
             throw new Error(resData.error || 'Registration failed');
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const errMsg = e instanceof Error ? e.message : 'Registration failed';
           setMessages(prev => [...prev, {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: `❌ Could not complete doctor registration: ${e.message}`,
+            content: `❌ Could not complete doctor registration: ${errMsg}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }]);
         } finally {
@@ -852,11 +889,12 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
           } else {
             throw new Error(resData.error || 'Pet registration failed');
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const errMsg = e instanceof Error ? e.message : 'Pet registration failed';
           setMessages(prev => [...prev, {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: `❌ Could not complete pet registration: ${e.message}`,
+            content: `❌ Could not complete pet registration: ${errMsg}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }]);
         } finally {
@@ -1013,11 +1051,12 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
           } else {
             throw new Error(resData.error || 'Appointment booking failed');
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const errMsg = e instanceof Error ? e.message : 'Appointment booking failed';
           setMessages(prev => [...prev, {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: `❌ Could not book appointment: ${e.message}`,
+            content: `❌ Could not book appointment: ${errMsg}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }]);
         } finally {
@@ -1138,7 +1177,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
       } else {
         throw new Error(data.error || 'Server temporary issue');
       }
-    } catch (err: any) {
+    } catch {
       setMessages(prev => [...prev, {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',

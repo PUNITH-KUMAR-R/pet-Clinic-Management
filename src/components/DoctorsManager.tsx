@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Clock, Phone, Mail, FileText, UserPlus, X, Check } from 'lucide-react';
+import { Edit2, Trash2, Calendar, Clock, Phone, Mail, UserPlus, X, Check } from 'lucide-react';
 import { Doctor } from '../types';
 import DeleteConfirmModal from './DeleteConfirmModal';
 
@@ -126,7 +126,7 @@ export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFor
       } else {
         setError(data.error || 'Failed to save doctor.');
       }
-    } catch (err: any) {
+    } catch {
       setError('Failed to reach server. Please try again.');
     }
   };
@@ -148,7 +148,7 @@ export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFor
       } else {
         setError(data.error || 'Failed to delete doctor.');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to reach server.');
     } finally {
       setIsDeleting(false);
@@ -170,7 +170,7 @@ export default function DoctorsManager({ doctors, onRefresh, autoOpenForm, onFor
       } else {
         setError(data.error || 'Failed to move doctor to trash.');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to reach server.');
     } finally {
       setIsDeleting(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, CheckCheck, Trash2, Calendar, UserCheck, Heart, Filter, Clock, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, Calendar, UserCheck, Heart, Filter, Clock, ArrowRight } from 'lucide-react';
 import { Appointment, Pet, Doctor } from '../types';
 
 interface NotificationsPageProps {
@@ -220,15 +220,15 @@ export default function NotificationsPage({ appointments, pets, doctors, onNavig
           <Filter className="w-3.5 h-3.5" /> Filter:
         </span>
         {[
-          { id: 'all', label: `All (${activeNotifications.length})` },
-          { id: 'unread', label: `Unread (${unreadCount})` },
-          { id: 'appointment', label: 'Appointments' },
-          { id: 'doctor', label: 'Doctor Regs' },
-          { id: 'pet', label: 'Pet Regs' },
+          { id: 'all' as const, label: `All (${activeNotifications.length})` },
+          { id: 'unread' as const, label: `Unread (${unreadCount})` },
+          { id: 'appointment' as const, label: 'Appointments' },
+          { id: 'doctor' as const, label: 'Doctor Regs' },
+          { id: 'pet' as const, label: 'Pet Regs' },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setFilterType(tab.id as any)}
+            onClick={() => setFilterType(tab.id)}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               filterType === tab.id
                 ? 'bg-teal-600 text-white shadow-xs'

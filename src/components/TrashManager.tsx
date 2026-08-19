@@ -25,8 +25,9 @@ export default function TrashManager({ onRefreshClinicData }: TrashManagerProps)
       if (!res.ok) throw new Error('Failed to load trash data.');
       const data = await res.json();
       setTrashItems(data);
-    } catch (err: any) {
-      setError(err.message || 'Error connecting to trash storage.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error connecting to trash storage.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,7 @@ export default function TrashManager({ onRefreshClinicData }: TrashManagerProps)
       } else {
         setError(data.error || 'Failed to restore item.');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to reach server.');
     }
   };
@@ -69,7 +70,7 @@ export default function TrashManager({ onRefreshClinicData }: TrashManagerProps)
       } else {
         setError(data.error || 'Failed to delete item.');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to reach server.');
     } finally {
       setIsProcessing(false);
@@ -91,7 +92,7 @@ export default function TrashManager({ onRefreshClinicData }: TrashManagerProps)
       } else {
         setError('Failed to empty trash.');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to reach server.');
     } finally {
       setIsProcessing(false);
