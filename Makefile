@@ -8,7 +8,8 @@
 APP_NAME      ?= vetcore-ai-clinic
 DOCKER_IMAGE  ?= vetcore-ai-clinic
 DOCKER_TAG    ?= latest
-REGISTRY      ?= docker.io/library
+DOCKER_USER   ?=
+REGISTRY      ?= docker.io
 PORT          ?= 3000
 VERSION       ?= $(shell node -p "require('./package.json').version || '1.0.0'")
 
@@ -160,13 +161,21 @@ build-docker:
 
 # Publish Docker container to registry (e.g., Docker Hub or GitHub Container Registry)
 publish: scan test build
-	@echo "$(CYAN)🚀 Publishing Docker image to $(REGISTRY)/$(DOCKER_IMAGE)...$(NC)"
-	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(REGISTRY)/$(DOCKER_IMAGE):$(DOCKER_TAG)
-	docker tag $(DOCKER_IMAGE):$(VERSION) $(REGISTRY)/$(DOCKER_IMAGE):$(VERSION)
+	@if [ -z "$(DOCKER_USER)" ]; then \
+		echo "\n$(YELLOW)⚠️  DOCKER_USER is not set!$(NC)"; \
+		echo "$(CYAN)Usage: make publish DOCKER_USER=<your-dockerhub-username>$(NC)"; \
+		echo "$(CYAN)Example: make publish DOCKER_USER=punithkumarshivu$(NC)"; \
+		echo "$(YELLOW)Or for GitHub Container Registry:$(NC)"; \
+		echo "$(CYAN)make publish REGISTRY=ghcr.io DOCKER_USER=<github-username>$(NC)\n"; \
+		exit 1; \
+	fi
+	@echo "$(CYAN)🚀 Publishing Docker image to $(REGISTRY)/$(DOCKER_USER)/$(DOCKER_IMAGE)...$(NC)"
+	docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(REGISTRY)/$(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker tag $(DOCKER_IMAGE):$(VERSION) $(REGISTRY)/$(DOCKER_USER)/$(DOCKER_IMAGE):$(VERSION)
 	@echo "$(YELLOW)Note: Ensure you ran 'docker login' prior to publishing.$(NC)"
-	docker push $(REGISTRY)/$(DOCKER_IMAGE):$(DOCKER_TAG)
-	docker push $(REGISTRY)/$(DOCKER_IMAGE):$(VERSION)
-	@echo "$(GREEN)🎉 Successfully published $(REGISTRY)/$(DOCKER_IMAGE):$(VERSION)$(NC)"
+	docker push $(REGISTRY)/$(DOCKER_USER)/$(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker push $(REGISTRY)/$(DOCKER_USER)/$(DOCKER_IMAGE):$(VERSION)
+	@echo "$(GREEN)🎉 Successfully published $(REGISTRY)/$(DOCKER_USER)/$(DOCKER_IMAGE):$(VERSION)$(NC)"
 
 # Release workflow: Validates security, runs tests, creates Git tag, and builds release package
 release: scan test build
