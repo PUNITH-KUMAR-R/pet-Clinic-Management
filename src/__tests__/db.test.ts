@@ -518,5 +518,46 @@ describe('DatabaseManager Comprehensive 100% Coverage Suite', () => {
       expect(() => db.saveTrash([])).not.toThrow();
       trashSaveSpy.mockRestore();
     });
+
+    it('should cover fresh database initialization, missing directories and uninitialized read states', () => {
+      // 1. Test clean initialization when files and directories do not exist
+      const existsSpy = vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+      const mkdirSpy = vi.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined as unknown as string);
+      const writeSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+
+      const freshDb = new DatabaseManager();
+      expect(freshDb).toBeDefined();
+      expect(mkdirSpy).toHaveBeenCalled();
+      expect(writeSpy).toHaveBeenCalled();
+
+      // 2. Test saving when directory needs to be created
+      freshDb.save({ doctors: [], pets: [], appointments: [] });
+      freshDb.saveTrash([]);
+
+      // 3. Test readTrash when trash file does not exist
+      const trashInit = freshDb.readTrash();
+      expect(trashInit).toEqual([]);
+
+      // 4. Test read when file does not exist initially
+      const readSpy = vi.spyOn(fs, 'readFileSync').mockImplementationOnce(() => {
+        throw new Error('No file');
+      });
+      // Force cache to null to test fallback seed branch (lines 239-243)
+      (freshDb as unknown as { cache: unknown }).cache = null;
+      const seedFallback = freshDb.read();
+      expect(seedFallback.doctors.length).toBeGreaterThan(0);
+      readSpy.mockRestore();
+
+      // 5. Test error in ensureDatabaseFile catch block (lines 222-224)
+      mkdirSpy.mockImplementationOnce(() => {
+        throw new Error('Simulated mkdir error');
+      });
+      const errDb = new DatabaseManager();
+      expect(errDb).toBeDefined();
+
+      existsSpy.mockRestore();
+      mkdirSpy.mockRestore();
+      writeSpy.mockRestore();
+    });
   });
 });

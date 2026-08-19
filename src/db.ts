@@ -235,12 +235,13 @@ export class DatabaseManager {
       return parsed;
     } catch (err) {
       console.error('Failed to read database file, falling back to cache/seed:', err);
-      if (this.cache) return this.cache;
-      return {
-        doctors: INITIAL_DOCTORS,
-        pets: INITIAL_PETS,
-        appointments: INITIAL_APPOINTMENTS
-      };
+      return (
+        this.cache ?? {
+          doctors: INITIAL_DOCTORS,
+          pets: INITIAL_PETS,
+          appointments: INITIAL_APPOINTMENTS
+        }
+      );
     }
   }
 

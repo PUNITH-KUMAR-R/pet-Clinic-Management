@@ -159,6 +159,74 @@
         "start": "09:00",
         "end": "17:00"
       }
+    },
+    {
+      "id": "doc-1787122971996",
+      "name": "Dr. John Watson",
+      "specialty": "Cardiology",
+      "email": "watson@vetcore.com",
+      "phone": "555-0199",
+      "bio": "Veterinarian with 10 years experience",
+      "avatar": "",
+      "workingDays": [
+        "Monday",
+        "Wednesday",
+        "Friday"
+      ],
+      "workingHours": {
+        "start": "09:00",
+        "end": "17:00"
+      }
+    },
+    {
+      "id": "doc-1787122972010",
+      "name": "Dr. Restorable",
+      "specialty": "Surgery",
+      "email": "restore@vetcore.com",
+      "phone": "555-0192",
+      "bio": "Specialist",
+      "avatar": "",
+      "workingDays": [
+        "Monday"
+      ],
+      "workingHours": {
+        "start": "09:00",
+        "end": "17:00"
+      }
+    },
+    {
+      "id": "doc-1787123034472",
+      "name": "Dr. John Watson",
+      "specialty": "Cardiology",
+      "email": "watson@vetcore.com",
+      "phone": "555-0199",
+      "bio": "Veterinarian with 10 years experience",
+      "avatar": "",
+      "workingDays": [
+        "Monday",
+        "Wednesday",
+        "Friday"
+      ],
+      "workingHours": {
+        "start": "09:00",
+        "end": "17:00"
+      }
+    },
+    {
+      "id": "doc-1787123034483",
+      "name": "Dr. Restorable",
+      "specialty": "Surgery",
+      "email": "restore@vetcore.com",
+      "phone": "555-0192",
+      "bio": "Specialist",
+      "avatar": "",
+      "workingDays": [
+        "Monday"
+      ],
+      "workingHours": {
+        "start": "09:00",
+        "end": "17:00"
+      }
     }
   ],
   "pets": [
@@ -412,6 +480,120 @@
       "ownerEmail": "karen@example.com",
       "ownerPhone": "555-0191",
       "medicalRecords": []
+    },
+    {
+      "id": "pet-1787122971983",
+      "name": "Coco",
+      "type": "Dog",
+      "breed": "Poodle",
+      "age": 2,
+      "weight": 6.5,
+      "ownerName": "Alex Green",
+      "ownerEmail": "alex@example.com",
+      "ownerPhone": "555-0987",
+      "medicalRecords": []
+    },
+    {
+      "id": "pet-1787122971985",
+      "name": "Luna",
+      "type": "Cat",
+      "breed": "Persian",
+      "age": 3,
+      "weight": 5,
+      "ownerName": "Alice",
+      "ownerEmail": "alice@example.com",
+      "ownerPhone": "555-0100",
+      "medicalRecords": []
+    },
+    {
+      "id": "pet-1787122971987",
+      "name": "Daisy",
+      "type": "Dog",
+      "breed": "Beagle",
+      "age": 1,
+      "weight": 8,
+      "ownerName": "Chloe",
+      "ownerEmail": "chloe@example.com",
+      "ownerPhone": "555-0188",
+      "medicalRecords": [
+        {
+          "id": "rec-1787122971987",
+          "date": "2026-08-19",
+          "diagnosis": "Puppy Checkup",
+          "treatment": "Core Vaccines",
+          "notes": "Healthy and active",
+          "vetName": "Dr. Sarah Jenkins"
+        }
+      ]
+    },
+    {
+      "id": "pet-1787122972007",
+      "name": "RestorablePet",
+      "type": "Dog",
+      "breed": "Husky",
+      "age": 3,
+      "weight": 22,
+      "ownerName": "Karen",
+      "ownerEmail": "karen@example.com",
+      "ownerPhone": "555-0191",
+      "medicalRecords": []
+    },
+    {
+      "id": "pet-1787123034459",
+      "name": "Coco",
+      "type": "Dog",
+      "breed": "Poodle",
+      "age": 2,
+      "weight": 6.5,
+      "ownerName": "Alex Green",
+      "ownerEmail": "alex@example.com",
+      "ownerPhone": "555-0987",
+      "medicalRecords": []
+    },
+    {
+      "id": "pet-1787123034460",
+      "name": "Luna",
+      "type": "Cat",
+      "breed": "Persian",
+      "age": 3,
+      "weight": 5,
+      "ownerName": "Alice",
+      "ownerEmail": "alice@example.com",
+      "ownerPhone": "555-0100",
+      "medicalRecords": []
+    },
+    {
+      "id": "pet-1787123034462",
+      "name": "Daisy",
+      "type": "Dog",
+      "breed": "Beagle",
+      "age": 1,
+      "weight": 8,
+      "ownerName": "Chloe",
+      "ownerEmail": "chloe@example.com",
+      "ownerPhone": "555-0188",
+      "medicalRecords": [
+        {
+          "id": "rec-1787123034463",
+          "date": "2026-08-19",
+          "diagnosis": "Puppy Checkup",
+          "treatment": "Core Vaccines",
+          "notes": "Healthy and active",
+          "vetName": "Dr. Sarah Jenkins"
+        }
+      ]
+    },
+    {
+      "id": "pet-1787123034481",
+      "name": "RestorablePet",
+      "type": "Dog",
+      "breed": "Husky",
+      "age": 3,
+      "weight": 22,
+      "ownerName": "Karen",
+      "ownerEmail": "karen@example.com",
+      "ownerPhone": "555-0191",
+      "medicalRecords": []
     }
   ],
   "appointments": [
@@ -486,6 +668,44 @@
     },
     {
       "id": "apt-1787115700484",
+      "petId": "unknown-pet-ref",
+      "doctorId": "unknown-doc-ref",
+      "date": "2026-09-20",
+      "time": "11:00",
+      "reason": "Vaccination Check",
+      "status": "Scheduled"
+    },
+    {
+      "id": "apt-1787122971999",
+      "petId": "pet-1",
+      "doctorId": "doc-1787122971998",
+      "date": "2026-09-12",
+      "time": "15:00",
+      "reason": "Consultation",
+      "status": "Cancelled",
+      "notes": "Doctor moved to trash"
+    },
+    {
+      "id": "apt-1787122972013",
+      "petId": "unknown-pet-ref",
+      "doctorId": "unknown-doc-ref",
+      "date": "2026-09-20",
+      "time": "11:00",
+      "reason": "Vaccination Check",
+      "status": "Scheduled"
+    },
+    {
+      "id": "apt-1787123034474",
+      "petId": "pet-1",
+      "doctorId": "doc-1787123034473",
+      "date": "2026-09-12",
+      "time": "15:00",
+      "reason": "Consultation",
+      "status": "Cancelled",
+      "notes": "Doctor moved to trash"
+    },
+    {
+      "id": "apt-1787123034487",
       "petId": "unknown-pet-ref",
       "doctorId": "unknown-doc-ref",
       "date": "2026-09-20",
