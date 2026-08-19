@@ -95,7 +95,7 @@ const SECRET_PATTERNS = [
 ];
 
 const IGNORE_DIRS = new Set(['node_modules', 'dist', 'coverage', '.git']);
-const IGNORE_FILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'bun.lockb', '.env.example']);
+const IGNORE_FILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'bun.lockb', '.env.example', '.env', '.env.local', '.env.development', '.env.production']);
 
 function collectFiles(dir: string, results: string[] = []): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
