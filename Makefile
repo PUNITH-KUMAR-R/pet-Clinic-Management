@@ -191,6 +191,37 @@ release: scan test build
 	@echo "$(GREEN)🏁 Release v$(VERSION) build ready!$(NC)"
 
 # ------------------------------------------------------------------------------
+# ☁️ CLOUD DEPLOYMENTS (GCP Cloud Run & AWS App Runner / ECS)
+# ------------------------------------------------------------------------------
+
+# Deploy directly to Google Cloud Run (Serverless Container)
+deploy-gcp:
+	@echo "$(CYAN)☁️  Deploying to Google Cloud Run...$(NC)"
+	@which gcloud > /dev/null || (echo "$(RED)Error: Google Cloud SDK (gcloud) is not installed.$(NC)" && exit 1)
+	gcloud run deploy $(APP_NAME) \
+		--source . \
+		--platform managed \
+		--region us-central1 \
+		--allow-unauthenticated \
+		--port 3000 \
+		--set-env-vars NODE_ENV=production
+	@echo "$(GREEN)✅ Successfully deployed to Google Cloud Run!$(NC)"
+
+# Build and push to AWS Elastic Container Registry (ECR)
+deploy-aws-ecr:
+	@echo "$(CYAN)☁️  Preparing AWS ECR Deployment...$(NC)"
+	@if [ -z "$(AWS_ACCOUNT_ID)" ] || [ -z "$(AWS_REGION)" ]; then \
+		echo "$(YELLOW)⚠️  Please provide AWS_ACCOUNT_ID and AWS_REGION$(NC)"; \
+		echo "$(CYAN)Usage: make deploy-aws-ecr AWS_ACCOUNT_ID=123456789012 AWS_REGION=us-east-1$(NC)"; \
+		exit 1; \
+	fi
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+	docker build -t $(DOCKER_IMAGE):latest .
+	docker tag $(DOCKER_IMAGE):latest $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCKER_IMAGE):latest
+	docker push $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCKER_IMAGE):latest
+	@echo "$(GREEN)✅ Image pushed to AWS ECR! Deploy via AWS App Runner or ECS Fargate.$(NC)"
+
+# ------------------------------------------------------------------------------
 # 🧹 CLEAN
 # ------------------------------------------------------------------------------
 clean:

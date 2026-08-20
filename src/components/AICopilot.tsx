@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, Send, Bot, User, RefreshCw, RotateCcw, 
   UserPlus, Calendar, Stethoscope, 
-  ShieldCheck, XCircle, Camera, X, UploadCloud
+  ShieldCheck, XCircle
 } from 'lucide-react';
 import { CoPilotMessage, Pet, Doctor, Appointment } from '../types';
 
@@ -58,7 +58,7 @@ interface ActiveWizardState {
 const DEFAULT_INITIAL_MESSAGE: CoPilotMessage = {
   id: 'init',
   role: 'assistant',
-  content: '👋 Hi! I am your interactive AI Veterinary Assistant & Diagnostic Partner.\n\n• **Image Diagnosis:** Click 📸 or drag & drop veterinary photos/X-Rays into chat to diagnose diseases, find underlying causes, and get immediate clinical triage.\n• **Interactive Wizards:** Register doctors, enroll patients & pets, book appointments, or pull patient records.\n\nClick a quick action above, attach an image, or type your question to begin!',
+  content: '👋 Hi! I am your interactive AI Veterinary Assistant & Clinical Practice Partner.\n\n• **Interactive Wizards:** Register doctors, enroll patients & pets, book appointments, or pull patient records.\n• **Natural Language Queries:** Ask clinical questions, request doctor recommendations, or update database records.\n\nClick a quick action above or type your question to begin!',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 };
 
@@ -470,71 +470,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
   const [activeWizard, setActiveWizard] = useState<ActiveWizardState | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
-  const [imageFileName, setImageFileName] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const handleImageSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload a valid image file (PNG, JPG, WebP).');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setAttachedImage(result);
-      setImageFileName(file.name);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleImageSelect(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const removeAttachedImage = () => {
-    setAttachedImage(null);
-    setImageFileName(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  // Helper for quick sample image diagnostics in chat
-  const loadSampleCaseInChat = (title: string, species: string, notes: string, imageUrl: string) => {
-    // Convert sample image URL to base64 or pass data
-    fetch(imageUrl)
-      .then(res => res.blob())
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          setAttachedImage(base64data);
-          setImageFileName(`${title}.jpg`);
-          setInput(`Diagnose ${species}: ${notes}`);
-        };
-        reader.readAsDataURL(blob);
-      })
-      .catch(() => {
-        setInput(`Diagnose ${species}: ${notes}`);
-      });
-  };
-  void loadSampleCaseInChat;
 
   // Ensure any previous conversation stored in localStorage is cleared on app startup/reload
   useEffect(() => {
@@ -1110,52 +1046,47 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
   };
 
   const handleSend = async (text: string) => {
-    if ((!text.trim() && !attachedImage) || loading) return;
+    if (!text.trim() || loading) return;
 
-    const currentImage = attachedImage;
-    const sendText = text.trim() || (currentImage ? 'Please analyze this veterinary image and provide a clinical assessment, likely disease causes, urgency, and recommended diagnostic next steps.' : '');
+    const sendText = text.trim();
 
     const userMsg: CoPilotMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
       content: sendText,
-      attachedImage: currentImage || undefined,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    removeAttachedImage();
 
-    // If active wizard exists, handle input via wizard step processor (if text only)
-    if (activeWizard && !currentImage) {
+    // If active wizard exists, handle input via wizard step processor
+    if (activeWizard) {
       await processWizardStep(sendText);
       return;
     }
 
     const textLower = sendText.toLowerCase();
 
-    // Check for trigger phrases to launch wizard flows (only if no image attached)
-    if (!currentImage) {
-      if (textLower.includes('doctor') && (textLower.includes('register') || textLower.includes('add') || textLower.includes('new') || textLower.includes('create'))) {
-        startWizard('doctor');
-        return;
-      }
-      if ((textLower.includes('pet') || textLower.includes('patient')) && (textLower.includes('register') || textLower.includes('add') || textLower.includes('new') || textLower.includes('create'))) {
-        startWizard('pet');
-        return;
-      }
-      if ((textLower.includes('appointment') || textLower.includes('book') || textLower.includes('schedule') || textLower.includes('visit')) && (textLower.includes('register') || textLower.includes('add') || textLower.includes('new') || textLower.includes('make'))) {
-        startWizard('appointment');
-        return;
-      }
-      if (textLower.includes('portal') || textLower.includes('lookup') || textLower.includes('dossier') || textLower.includes('record')) {
-        startWizard('patient-portal');
-        return;
-      }
+    // Check for trigger phrases to launch wizard flows
+    if (textLower.includes('doctor') && (textLower.includes('register') || textLower.includes('add') || textLower.includes('new') || textLower.includes('create'))) {
+      startWizard('doctor');
+      return;
+    }
+    if ((textLower.includes('pet') || textLower.includes('patient')) && (textLower.includes('register') || textLower.includes('add') || textLower.includes('new') || textLower.includes('create'))) {
+      startWizard('pet');
+      return;
+    }
+    if ((textLower.includes('appointment') || textLower.includes('book') || textLower.includes('schedule') || textLower.includes('visit')) && (textLower.includes('register') || textLower.includes('add') || textLower.includes('new') || textLower.includes('make'))) {
+      startWizard('appointment');
+      return;
+    }
+    if (textLower.includes('portal') || textLower.includes('lookup') || textLower.includes('dossier') || textLower.includes('record')) {
+      startWizard('patient-portal');
+      return;
     }
 
-    // Otherwise send multimodal chat query to server API
+    // Otherwise send chat query to server API
     setLoading(true);
 
     try {
@@ -1181,7 +1112,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
       setMessages(prev => [...prev, {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: `I am ready! You can ask clinical questions, upload veterinary images for disease diagnosis, or register doctors & pets by clicking the buttons above!`,
+        content: `I am ready! You can ask clinical questions, request doctor recommendations, or register doctors & pets by clicking the buttons above!`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
     } finally {
@@ -1227,14 +1158,6 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
       {/* Interactive Quick Launch Bar */}
       <div className="p-2 bg-teal-50/80 dark:bg-slate-800/80 border-b border-teal-100/80 dark:border-slate-700/60 flex items-center gap-1.5 overflow-x-auto text-xs shrink-0">
         <span className="text-[10px] uppercase font-bold text-teal-800 dark:text-teal-300 px-1 shrink-0">Quick Action:</span>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          title="Upload X-Ray, lesion photo, or skin rash for instant AI diagnosis"
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border border-teal-300 dark:border-teal-700 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold shrink-0 cursor-pointer transition-all shadow-2xs"
-        >
-          <Camera className="w-3.5 h-3.5" />
-          <span>📸 Upload Image for Diagnosis</span>
-        </button>
         <button
           onClick={() => startWizard('doctor')}
           className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold shrink-0 cursor-pointer transition-all shadow-2xs ${
@@ -1282,21 +1205,7 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
       </div>
 
       {/* Messages Feed */}
-      <div 
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        className={`flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-900/40 relative ${
-          isDragging ? 'ring-2 ring-teal-500 bg-teal-50/30' : ''
-        }`}
-      >
-        {isDragging && (
-          <div className="absolute inset-0 bg-teal-900/40 backdrop-blur-xs flex flex-col items-center justify-center text-white z-20 pointer-events-none">
-            <UploadCloud className="w-12 h-12 animate-bounce mb-2" />
-            <p className="font-bold text-sm">Drop medical image here for AI diagnosis</p>
-          </div>
-        )}
-
+      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-900/40 relative">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -1313,24 +1222,6 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
             </div>
 
             <div className="space-y-1 flex-1 min-w-0">
-              {/* If user attached an image, render preview inside message */}
-              {msg.attachedImage && (
-                <div className={`mb-2 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 ${msg.role === 'user' ? 'ml-auto max-w-xs' : 'max-w-xs'}`}>
-                  <img 
-                    src={msg.attachedImage} 
-                    alt="Uploaded clinical case" 
-                    referrerPolicy="no-referrer"
-                    className="w-full max-h-48 object-cover rounded-lg"
-                  />
-                  <div className="p-1.5 bg-slate-900/80 text-white text-[10px] flex items-center justify-between">
-                    <span className="flex items-center gap-1 font-mono">
-                      <Camera className="w-3 h-3 text-teal-400" />
-                      <span>Medical Image Input</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-
               <div className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-teal-600 text-white rounded-tr-none font-medium'
@@ -1365,41 +1256,11 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
         {loading && (
           <div className="flex items-center space-x-2 text-teal-600 dark:text-teal-400 text-xs pl-2 font-medium">
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            <span>AI Practice Co-pilot analyzing medical inputs & clinical database...</span>
+            <span>AI Practice Co-pilot analyzing inputs & clinical database...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Attached Image Preview Bar before sending */}
-      {attachedImage && (
-        <div className="px-3 py-2 bg-teal-50 dark:bg-teal-950/70 border-t border-teal-200 dark:border-teal-800 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-lg overflow-hidden border border-teal-300 dark:border-teal-700 shrink-0 bg-white">
-              <img 
-                src={attachedImage} 
-                alt="Selected preview" 
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900 dark:text-teal-200 truncate">
-                <Camera className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span className="truncate">{imageFileName || 'Image attached'}</span>
-              </div>
-              <p className="text-[10px] text-teal-700 dark:text-teal-400">Ready for AI cause & disease diagnosis on send</p>
-            </div>
-          </div>
-          <button 
-            onClick={removeAttachedImage}
-            title="Remove attached image"
-            className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* Active Step Status Banner */}
       {activeWizard && (
@@ -1417,19 +1278,6 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
         </div>
       )}
 
-      {/* Hidden File Input for Image Upload */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        accept="image/*" 
-        onChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            handleImageSelect(e.target.files[0]);
-          }
-        }}
-        className="hidden" 
-      />
-
       {/* Input */}
       <form
         onSubmit={(e) => {
@@ -1438,32 +1286,21 @@ export default function AICopilot({ onRefreshData, pets = [], doctors = [], appo
         }}
         className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center space-x-2 shrink-0"
       >
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          title="Attach image (X-Ray, rash, lesion) to chat for AI disease diagnosis"
-          className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950/60 text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 transition-colors shrink-0 cursor-pointer"
-        >
-          <Camera className="w-4 h-4" />
-        </button>
-
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={
-            attachedImage
-              ? "Add clinical notes or press Enter to diagnose image..."
-              : activeWizard 
-                ? `Answer step ${activeWizard.step + 1} or type 'cancel'...` 
-                : "Type clinical query, drag/drop image, or register doctor..."
+            activeWizard 
+              ? `Answer step ${activeWizard.step + 1} or type 'cancel'...` 
+              : "Type clinical query, ask doctor recommendation, or register doctor..."
           }
           disabled={loading}
           className="flex-1 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/50 rounded-xl px-3.5 py-2.5 outline-none transition-all text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
         />
         <button
           type="submit"
-          disabled={loading || (!input.trim() && !attachedImage)}
+          disabled={loading || !input.trim()}
           className="bg-teal-600 hover:bg-teal-700 text-white p-2.5 rounded-xl transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center shrink-0"
         >
           <Send className="w-4 h-4" />
