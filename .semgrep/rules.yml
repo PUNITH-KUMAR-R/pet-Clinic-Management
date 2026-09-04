@@ -1,0 +1,38 @@
+rules:
+  - id: detect-hardcoded-secrets
+    patterns:
+      - pattern-regex: "(?i)(api_key|secret|password|bearer|auth_token)\\s*=\\s*['\"][A-Za-z0-9_\\-]{16,}['\"]"
+    message: "Potential hardcoded secret or credential detected. Use environment variables (process.env) instead."
+    languages: [typescript, javascript, json]
+    severity: ERROR
+
+  - id: express-nosql-injection-risk
+    patterns:
+      - pattern: |
+          eval(...)
+    message: "Use of eval() detected. This presents dangerous arbitrary code execution risks."
+    languages: [typescript, javascript]
+    severity: ERROR
+
+  - id: insecure-express-cors
+    patterns:
+      - pattern: |
+          app.use(cors({ origin: '*' }))
+    message: "Wildcard CORS origin enabled. Restrict CORS to trusted origins in production."
+    languages: [typescript, javascript]
+    severity: WARNING
+
+  - id: secure-sql-or-path-traversal
+    patterns:
+      - pattern-regex: "fs\\.(readFile|writeFile|readFileSync|writeFileSync)\\s*\\(\\s*req\\.(query|params|body)"
+    message: "User input directly interpolated into filesystem calls without path sanitization."
+    languages: [typescript, javascript]
+    severity: ERROR
+
+  - id: disable-x-powered-by
+    patterns:
+      - pattern: |
+          express()
+    message: "Ensure security headers or express disable x-powered-by are configured."
+    languages: [typescript, javascript]
+    severity: INFO

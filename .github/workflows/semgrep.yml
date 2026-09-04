@@ -1,0 +1,38 @@
+name: SAST & Security Scan (Semgrep)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  semgrep-scan:
+    name: Semgrep Static Application Security Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@60edb5dd545a775178f525247059d6179ab6d077 # v4.0.0
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run Built-in SAST Scanner
+        run: npm run sast
+
+      - name: Run Semgrep Official Action
+        uses: semgrep/semgrep-action@713efdd345f3034e3e01160497c4f42502c2fb18 # v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+            p/typescript
+            p/react
+            p/nodejs
+          generateSarif: true

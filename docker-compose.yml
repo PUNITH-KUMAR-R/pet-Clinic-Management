@@ -1,0 +1,16 @@
+services:
+  vetcore-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vetcore-ai-clinic
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - APP_URL=http://localhost:3000
+    # Automatically read any variables set in the local .env file
+    env_file:
+      - .env
+    restart: always

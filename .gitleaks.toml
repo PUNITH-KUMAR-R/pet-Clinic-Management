@@ -1,0 +1,27 @@
+# Gitleaks configuration file for Secret Leak Detection
+title = "Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlists for harmless fixtures and build artifacts"
+paths = [
+  '''node_modules''',
+  '''dist''',
+  '''coverage''',
+  '''.env.example''',
+  '''scripts/detect-secrets.ts'''
+]
+
+[[rules]]
+id = "google-api-key"
+description = "Google Gemini / Cloud API Key"
+regex = '''\bAIza[0-9A-Za-z-_]{35}\b'''
+keywords = ["AIza"]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key / Secret"
+regex = '''(?i)(api_key|secret|password|bearer|auth_token)\s*[:=]\s*['"][A-Za-z0-9_\-]{20,}['"]'''
+entropy = 3.5
